@@ -28,12 +28,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "agile": "node agile/build.mjs",
-    "docker:build": "docker build --tag slidessoca .",
+    "docker:build": "docker build --tag slidessoca:latest .",
+    "docker:build:dev": "docker build --tag slidessoca:dev .",
     "docker:load": "gunzip -c slidessoca.tar.gz | docker load",
-    "docker:start:prod": "docker run --name slidessoca -d --restart unless-stopped -p 127.0.0.1:3004:3000 -v slidessoca-data:/app/data -e ORIGIN=https://slides.passoca.dev slidessoca",
+    "docker:start:prod": "docker run --name slidessoca -d --restart unless-stopped -p 127.0.0.1:3004:3000 -v slidessoca-data:/app/data -e ORIGIN=https://slides.passoca.dev $([ -f \"$HOME/.slidessoca.env\" ] && echo --env-file \"$HOME/.slidessoca.env\") slidessoca:latest",
     "docker:stop:prod": "docker stop slidessoca && docker rm slidessoca",
-    "docker:start:dev": "docker run --name slidessoca-dev -d --restart unless-stopped -p 127.0.0.1:3005:3000 -v slidessoca-dev-data:/app/data -e ORIGIN=https://slides-dev.passoca.dev slidessoca:dev",
-    "docker:stop:dev": "docker stop slidessoca-dev && docker rm slidessoca-dev"
+    "docker:start:dev": "docker run --name slidessoca-dev -d --restart unless-stopped -p 127.0.0.1:3005:3000 -v slidessoca-dev-data:/app/data -e ORIGIN=https://slides-dev.passoca.dev $([ -f \"$HOME/.slidessoca-dev.env\" ] && echo --env-file \"$HOME/.slidessoca-dev.env\") slidessoca:dev",
+    "docker:stop:dev": "docker stop slidessoca-dev && docker rm slidessoca-dev",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "dompurify": "^3.5.0",

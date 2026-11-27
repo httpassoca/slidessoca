@@ -29,3 +29,10 @@ pnpm test && pnpm check && pnpm lint
 Decks are stored in your browser; only published copies reach the server, as gzipped files that
 expire after 30 days ([ADR 0001](docs/adr/0001-storage-on-the-vps.md)). Contributor and agent
 notes: [CLAUDE.md](CLAUDE.md). Work tracker: [`agile/`](agile/README.md).
+
+## Deploy
+
+`develop` deploys to slides-dev.passoca.dev and `main` to slides.passoca.dev: GitHub Actions
+builds the Docker image, copies it to the VPS and restarts the container. Environments, ports,
+the data volume, backups, releases (`pnpm release`) and the one-time setup
+(`bash deploy/wizard.sh`) are in [docs/deploy.md](docs/deploy.md).
