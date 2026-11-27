@@ -38,6 +38,10 @@
     class: cls = '',
   }: Props = $props()
 
+  // Image sources that failed to load (dead URL, missing upload): drawn as a quiet frame instead
+  // of the browser's broken-image glyph.
+  let failed = $state<Record<string, true>>({})
+
   const pct = (v: number, of: number) => `${(v / of) * 100}%`
   const cq = (px: number) => `${(px / CANVAS_W) * 100}cqw`
 
@@ -101,8 +105,20 @@
         >
           <div class="inner">{@html renderMarkdown(e.text)}</div>
         </div>
+      {:else if e.kind === 'image' && failed[e.src]}
+        <div
+          class="missing"
+          role={thumbnail ? undefined : 'img'}
+          aria-label={thumbnail ? undefined : e.alt}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" /><path d="M3 16l5-5 4 4 3-3 6 6" />
+          </svg>
+          {#if e.alt}<span>{e.alt}</span>{/if}
+        </div>
       {:else if e.kind === 'image'}
         <img
+          onerror={() => (failed[e.src] = true)}
           src={e.src}
           alt={thumbnail ? '' : e.alt}
           style="object-fit:{e.fit}"
@@ -260,8 +276,27 @@
     padding: 0.4em 0.6em;
     background: color-mix(in oklch, var(--ss-bg) 78%, transparent);
   }
+  .missing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6em;
+    block-size: 100%;
+    border: 1px dashed var(--ss-line-strong);
+    color: var(--ss-fg-muted);
+    font-size: 1.6cqw;
+    text-align: center;
+    svg {
+      inline-size: 3cqw;
+      block-size: 3cqw;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+    }
+  }
   img,
-  svg {
+  .el > svg {
     display: block;
     inline-size: 100%;
     block-size: 100%;

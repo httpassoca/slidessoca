@@ -22,7 +22,7 @@
     } catch (e) {
       error =
         e instanceof SyntaxError
-          ? 'This is not a JSON file.'
+          ? 'This is not a JSON file'
           : `Not a slidessoca deck: ${(e as Error).message}`
     }
   }

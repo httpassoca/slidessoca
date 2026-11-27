@@ -7,6 +7,7 @@
   the slide. Keys: ←/→ Space PageUp/Down Home/End · F fullscreen · O/Esc overview · N notes.
 -->
 <script lang="ts">
+  import { counter } from '$lib/deck/count'
   import { onMount } from 'svelte'
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
@@ -265,8 +266,8 @@
         Prev
       </Button>
       <span class="counter" aria-live="polite">
-        <span class="sr-only">Slide</span>
-        {index + 1} / {count}
+        <span class="sr-only">Slide {index + 1} of {count}</span>
+        <span aria-hidden="true">{counter(index, count)}</span>
       </span>
       <Button variant="primary" disabled={index >= count - 1} onclick={() => go(index + 1)}>
         Next

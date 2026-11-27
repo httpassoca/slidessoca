@@ -4,6 +4,8 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Unslop pass (SL-0006): zero-padded slide counter everywhere, calmer home with real sample slides in the empty state, deck actions in a menu, broken images draw a quiet frame, no hairlines around the viewer stage, toast copy without trailing periods.
+
 - Global page margin reset; ship the Caskaydia Cove fonts dssoca's theme.css requests.
 
 - Editor (`/edit/[id]`, SL-0002): slide sorter (add by layout, duplicate, delete, drag / Alt+arrow

@@ -39,10 +39,10 @@
     try {
       const copy = copyDeck(validateDeck($state.snapshot(deck)))
       await putDeck(copy)
-      toast.success('Copied into this browser. Edits stay here until you publish.')
+      toast.success('Copied into this browser, edits stay here until you publish')
       await goto(`/edit/${copy.id}`)
     } catch {
-      toast.error('Could not copy this deck into this browser.')
+      toast.error('Could not copy this deck into this browser')
     } finally {
       copying = false
     }
@@ -148,7 +148,7 @@
     font-size: var(--ss-size-sm);
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 700;
+    font-weight: 500;
     min-inline-size: 0;
   }
   .until {
