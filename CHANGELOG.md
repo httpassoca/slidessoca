@@ -4,6 +4,8 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Global page margin reset; ship the Caskaydia Cove fonts dssoca's theme.css requests.
+
 - Editor (`/edit/[id]`, SL-0002): slide sorter (add by layout, duplicate, delete, drag / Alt+arrow
   reorder), canvas with select / move / 8-handle resize / snapping guides / z-order / inline
   Markdown editing, text box / image (picker + drop, compressed) / shape insert, inspector (text,
