@@ -1,7 +1,8 @@
 # The slidessoca Markdown format
 
 One `.md` file = one deck. Upload it on **/new → Markdown** together with the images it
-references (or a `.zip` is NOT needed — just select the `.md` and the image files together).
+references: select (or drag in) the `.md` and the image files together — or one `.zip` holding
+them. You can also paste the Markdown, and add missing images afterwards.
 
 ```markdown
 ---
@@ -72,4 +73,12 @@ Without an override the layout is picked from the content:
 
 Text that does not fit its box is shrunk automatically (down to half size).
 
-Exporting a deck back to Markdown uses the same format; hand-placed positions are not kept.
+Front matter values may end with a `# comment`; quote a value that contains ` #`
+(`title: "Talk #3"`).
+
+## Export
+
+**Download .md** writes the deck in this same format. A deck with uploaded images downloads as a
+`.zip` holding `deck.md` and `images/slide-N-M.webp` (slide N, image M) — upload that zip again to
+get the deck back. A layout is written as `<!-- layout: … -->` only when it differs from the
+automatic one. Hand-placed positions are not kept; use **Download .json** for an exact copy.
