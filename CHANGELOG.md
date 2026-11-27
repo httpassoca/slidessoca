@@ -16,6 +16,10 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
   rendering (`SlideView`), themes from dssoca (dark, light and every preset).
 - Share storage: gzipped JSON files with a 30-day mtime expiry, `/api/decks` publish / read /
   republish / delete with an edit token.
+- Viewer, presenter and share links (SL-0004): `/s/[id]` player with keys, swipe, tap zones,
+  fullscreen, `#n` deep links, overview grid, read mode, "Make a copy" and Open Graph tags;
+  `/present/[id]` with next slide, notes, timer and a synced audience window; the Share dialog
+  (publish, copy, republish, unpublish, expiry). Slide Markdown now renders formatted on the server.
 - Quick create on `/new` (slide blocks with images, or one text box), Markdown import (`.md` +
   images or a `.zip`, paste, live preview, missing-image list), JSON import, `/format` help page,
   Markdown export as `.zip` with images, home-page deck actions (download, duplicate, delete).

@@ -25,15 +25,21 @@ src/lib/
     factory.ts   makeDeck / makeSlide / cloneSlide / publicDeck
     markdown.ts  the Markdown format (spec: docs/markdown-format.md) ↔ Deck
     validate.ts  untrusted JSON → Deck (server + client). Image src: raster data: URLs or http(s) only
-    render.ts    Markdown → sanitised HTML (DOMPurify), COLOR_VAR token map
+    render.ts    Markdown → sanitised HTML (no-raw-HTML marked + allowlist, works on the server;
+                 + DOMPurify in the browser), COLOR_VAR token map
+    nav.ts       player navigation: keys, swipe/tap gestures, #n hash, presenter sync messages
+    meta.ts      plain-text deck facts (Open Graph description)
   themes.ts    THEMES = dssoca dark/light + every dssoca preset (same menu as passoca.dev)
   client/      browser-only: db.ts (IndexedDB decks), images.ts (compress uploads), share.ts (publish API)
   server/      server-only: store.ts (gzipped JSON files, mtime = expiry), instance.ts, http.ts, ratelimit.ts
   components/  SlideView.svelte — THE renderer, shared by editor, thumbnails, viewer, presenter
+               player/ — DeckPlayer (viewer + audience window), Stage (16:9 letterbox), Overview
+               ShareDialog.svelte — publish / republish / unpublish (opened by the editor)
 src/routes/
   /            deck list (IndexedDB)
   /new         quick create + Markdown import
   /edit/[id]   editor
+  /present/[id] presenter (local deck; ?start=n, ?audience=1 = synced audience window)
   /s/[id]      public viewer (SSR — the only SSR page; everything else is ssr=false)
   /api/decks   POST publish · /api/decks/[id] GET / PUT (Bearer token) / DELETE
   /health      container probe

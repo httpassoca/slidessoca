@@ -8,7 +8,10 @@ const r = (p: string) => fileURLToPath(new URL(p, import.meta.url))
 export default defineConfig({
   plugins: [svelte(), svelteTesting()],
   resolve: {
-    alias: { $lib: r('./src/lib') },
+    alias: {
+      $lib: r('./src/lib'),
+      '$env/dynamic/private': r('./test/mocks/env.ts'),
+    },
   },
   test: {
     environment: 'jsdom',
