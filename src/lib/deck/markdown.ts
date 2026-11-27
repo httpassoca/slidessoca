@@ -23,6 +23,7 @@
 
 import { isThemeId, DEFAULT_THEME, type ThemeId } from '../themes.js'
 import { makeDeck, makeSlide } from './factory.js'
+import { autoLayout } from './layout.js'
 import {
   emptyContent,
   LAYOUTS,
@@ -55,7 +56,10 @@ function frontMatter(src: string): { meta: Record<string, string>; rest: string 
   const meta: Record<string, string> = {}
   for (const line of m[1].split(/\r?\n/)) {
     const kv = /^\s*([A-Za-z][\w-]*)\s*:\s*(.*?)\s*$/.exec(line)
-    if (kv) meta[kv[1].toLowerCase()] = kv[2].replace(/^["']|["']$/g, '')
+    if (!kv) continue
+    const quoted = /^(["'])(.*)\1$/.exec(kv[2])
+    // Unquoted values may carry a YAML-style ` # comment` (the spec's own example does).
+    meta[kv[1].toLowerCase()] = quoted ? quoted[2] : kv[2].replace(/\s+#.*$/, '')
   }
   return { meta, rest: src.slice(m[0].length) }
 }
@@ -205,7 +209,20 @@ export function parsedToDeck(p: ParsedDeck): Deck {
   return makeDeck(p.title, p.theme, slides.length ? slides : undefined)
 }
 
-/** Deck → Markdown in the same format (round-trips content, not hand-placed positions). */
+/** A body line that is exactly `---` would split the slide; `***` is the same rule in Markdown. */
+const safeBody = (body: string) => body.replace(/^(\s*)---\s*$/gm, '$1***')
+
+/** The layout a slide chunk gets when parsed back without an override. */
+function impliedLayout(chunk: string): LayoutName {
+  const p = parseSlide(chunk)
+  return p.layout ?? autoLayout(p.content)
+}
+
+/**
+ * Deck → Markdown in the same format (round-trips content and layout, not hand-placed
+ * positions). A `<!-- layout -->` override is written only when parsing the slide back would not
+ * pick the same layout by itself.
+ */
 export function deckToMarkdown(
   d: Deck,
   imageRef: (src: string, i: number) => string = (s) => s,
@@ -214,18 +231,21 @@ export function deckToMarkdown(
   const parts = d.slides.map((s) => {
     const c = s.content
     const lines: string[] = []
-    if (s.layout !== 'title' && s.layout !== 'section' && s.layout !== 'bullets')
-      lines.push(`<!-- layout: ${s.layout} -->`)
     if (c.title) lines.push(`${s.layout === 'title' ? '#' : '##'} ${c.title}`)
-    if (c.subtitle) lines.push(s.layout === 'title' ? c.subtitle : `### ${c.subtitle}`)
-    if (c.body) lines.push('', c.body)
+    if (c.subtitle) lines.push(s.layout === 'title' && c.title ? c.subtitle : `### ${c.subtitle}`)
+    if (c.body) lines.push('', safeBody(c.body))
     for (const im of c.images) lines.push('', `![${im.alt}](${imageRef(im.src, n++)})`)
     if (c.quote) {
       lines.push('', `> ${c.quote.text}`)
       if (c.quote.cite) lines.push(`> — ${c.quote.cite}`)
     }
-    if (s.notes) lines.push('', 'Note:', s.notes)
-    return lines.join('\n').trim()
+    let chunk = lines.join('\n').trim()
+    // Image refs may not resolve on re-parse (they are file names), so judge with real images.
+    const probe = chunk.replace(/^(\s*!\[[^\]]*\]\()[^)]*\)/gm, '$1https://x/i.png)')
+    if (impliedLayout(probe) !== s.layout) chunk = `<!-- layout: ${s.layout} -->\n${chunk}`
+    if (s.notes) chunk += `\n\nNote:\n${s.notes}`
+    return chunk
   })
-  return `---\ntitle: ${d.title}\ntheme: ${d.theme}\n---\n\n${parts.join('\n\n---\n\n')}\n`
+  const title = /[#"']|^\s|\s$/.test(d.title) ? JSON.stringify(d.title) : d.title
+  return `---\ntitle: ${title}\ntheme: ${d.theme}\n---\n\n${parts.join('\n\n---\n\n')}\n`
 }

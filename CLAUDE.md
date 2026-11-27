@@ -25,20 +25,28 @@ src/lib/
     factory.ts   makeDeck / makeSlide / cloneSlide / publicDeck
     markdown.ts  the Markdown format (spec: docs/markdown-format.md) ↔ Deck
     validate.ts  untrusted JSON → Deck (server + client). Image src: raster data: URLs or http(s) only
-    render.ts    Markdown → sanitised HTML (DOMPurify), COLOR_VAR token map
+    render.ts    Markdown → sanitised HTML (no-raw-HTML marked + allowlist, works on the server;
+                 + DOMPurify in the browser), COLOR_VAR token map
+    nav.ts       player navigation: keys, swipe/tap gestures, #n hash, presenter sync messages
+    meta.ts      plain-text deck facts (Open Graph description)
   themes.ts    THEMES = dssoca dark/light + every dssoca preset (same menu as passoca.dev)
   client/      browser-only: db.ts (IndexedDB decks), images.ts (compress uploads), share.ts (publish API)
   server/      server-only: store.ts (gzipped JSON files, mtime = expiry), instance.ts, http.ts, ratelimit.ts
   components/  SlideView.svelte — THE renderer, shared by editor, thumbnails, viewer, presenter
+               player/ — DeckPlayer (viewer + audience window), Stage (16:9 letterbox), Overview
+               ShareDialog.svelte — publish / republish / unpublish (opened by the editor)
 src/routes/
   /            deck list (IndexedDB)
   /new         quick create + Markdown import
   /edit/[id]   editor
+  /present/[id] presenter (local deck; ?start=n, ?audience=1 = synced audience window)
   /s/[id]      public viewer (SSR — the only SSR page; everything else is ssr=false)
   /api/decks   POST publish · /api/decks/[id] GET / PUT (Bearer token) / DELETE
   /health      container probe
 agile/         work tracker (board = index.html, `pnpm agile`). Slug: SL
-docs/          adr/, markdown-format.md
+docs/          adr/, markdown-format.md, deploy.md
+deploy/        nginx blocks + wizard.sh (owner's one-time VPS setup)
+scripts/       release.mjs (`pnpm release`)
 ```
 
 ## Invariants — do not break these
@@ -73,7 +81,20 @@ pnpm check          # svelte-check
 pnpm lint && pnpm format:check
 pnpm build && pnpm start   # production build on :3000 (DATA_DIR=./data)
 pnpm agile          # rebuild agile/index.html
+pnpm release        # on release/x.y.z: validate bump vs last tag, draft CHANGELOG section
 ```
+
+## Deploy (docs/deploy.md)
+
+- `deploy.yml`: push to `develop` → container `slidessoca-dev` (127.0.0.1:3005, volume
+  `slidessoca-dev-data`); push to `main` → `slidessoca` (127.0.0.1:3004, `slidessoca-data`). The
+  image is built **in CI, never on the VPS** (memory), shipped as a tarball, started by the
+  `docker:*` scripts in `package.json` (run with npm on the VPS), then probed on `/health` and `/`.
+- No SSH secrets → the run ends as "skipped deploy (no secrets)" (green). One-time setup:
+  `bash deploy/wizard.sh` (owner only). Changing a port/domain means package.json scripts,
+  deploy.yml, the nginx block and the wizard together.
+- The container sets `BODY_SIZE_LIMIT=16M`; nginx `client_max_body_size 16m`. Keep both above
+  `DECK_MAX_MB`.
 
 ## Rules
 
