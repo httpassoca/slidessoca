@@ -172,7 +172,8 @@
   .el {
     position: absolute;
   }
-  .text {
+  // The text box inside an element (not the `.el.text` wrapper, which must not clip editor handles).
+  .el > .text {
     display: flex;
     flex-direction: column;
     block-size: 100%;
