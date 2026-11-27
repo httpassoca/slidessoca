@@ -132,9 +132,11 @@
     if (!hash || !mounted) return
     const i = clampIndex(index, count)
     const want = hashFor(i)
-    if (location.hash === want || (i === 0 && !location.hash)) return
+    const from = location.hash
+    if (from === want || (i === 0 && !from)) return
     const t = setTimeout(() => {
-      if (location.hash !== want) replaceState(want, {})
+      // If the URL moved meanwhile (user typed/followed a #n link), that wins.
+      if (location.hash === from) replaceState(want, {})
     })
     return () => clearTimeout(t)
   })
