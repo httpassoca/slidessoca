@@ -172,7 +172,8 @@
   .el {
     position: absolute;
   }
-  .text {
+  // The text box inside an element (not the `.el.text` wrapper, which must not clip editor handles).
+  .el > .text {
     display: flex;
     flex-direction: column;
     block-size: 100%;
@@ -191,6 +192,15 @@
     &.role-quote {
       line-height: 1.08;
       letter-spacing: -0.01em;
+    }
+    // dssoca's global typography (p, h1…) sets fixed sizes/fonts/colours: slide text inherits the
+    // box's cqw size, font and colour token instead.
+    .inner :global(:is(p, li, blockquote, h1, h2, h3, h4)) {
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      letter-spacing: inherit;
+      color: inherit;
     }
     .inner :global(p) {
       margin: 0 0 0.45em;
