@@ -58,3 +58,13 @@ export function publicDeck(d: Deck): Deck {
   const { share: _share, ...rest } = d
   return structuredClone(rest)
 }
+
+/**
+ * "Make a copy" of someone's shared deck: a new local deck with a fresh id and no share info,
+ * so publishing it creates a new link instead of touching the original.
+ */
+export function copyDeck(d: Deck, now = new Date()): Deck {
+  const { share: _share, ...rest } = structuredClone(d)
+  const ts = now.toISOString()
+  return { ...rest, id: newId(), createdAt: ts, updatedAt: ts }
+}
