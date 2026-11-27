@@ -1,0 +1,25 @@
+# nginx server block on the VPS for slides.passoca.dev (production): proxies to the `slidessoca`
+# container (host port 3004, loopback only; see docker:start:prod in package.json). certbot
+# (--nginx) adds the `listen 443 ssl` and the 80 → 443 redirect by itself. Installed by
+# deploy/wizard.sh.
+server {
+    server_name slides.passoca.dev;
+
+    # Published decks carry images: the app caps a deck at 15 MB (DECK_MAX_MB) and adapter-node at
+    # 16 MB (BODY_SIZE_LIMIT in the Dockerfile). nginx's default 1 MB would reject them first.
+    client_max_body_size 16m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3004;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        # The app's per-IP rate limit trusts X-Real-IP (src/lib/server/http.ts). That is safe only
+        # because nginx is the sole client of 127.0.0.1:3004, and it overwrites what clients send.
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    listen 80;
+    listen [::]:80;
+}

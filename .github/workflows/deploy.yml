@@ -1,0 +1,157 @@
+name: Deploy
+
+# develop → slides-dev.passoca.dev (container slidessoca-dev, host port 3005, image slidessoca:dev)
+# main    → slides.passoca.dev     (container slidessoca,     host port 3004, image slidessoca:latest)
+# See docs/deploy.md. The one-time VPS setup (secrets, DNS, nginx, certs) is deploy/wizard.sh.
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy per environment at a time. Not cancelled mid-flight: a cancelled run could leave the
+# container stopped. A newer push waits, and replaces any older run still waiting.
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
+
+jobs:
+  deploy:
+    if: github.ref_name == 'main' || github.ref_name == 'develop'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+      url: ${{ github.ref_name == 'main' && 'https://slides.passoca.dev' || 'https://slides-dev.passoca.dev' }}
+    env:
+      # `prod` / `dev`: picks the docker:start:* / docker:stop:* scripts in package.json.
+      TARGET: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+      IMAGE: ${{ github.ref_name == 'main' && 'slidessoca:latest' || 'slidessoca:dev' }}
+      CONTAINER: ${{ github.ref_name == 'main' && 'slidessoca' || 'slidessoca-dev' }}
+      PORT: ${{ github.ref_name == 'main' && '3004' || '3005' }}
+      REMOTE_DIR: ${{ github.ref_name == 'main' && '~/dev/slidessoca' || '~/dev/slidessoca-dev' }}
+
+    steps:
+      # Until the owner runs deploy/wizard.sh there are no SSH secrets: test and build anyway, then
+      # stop before touching the server, with a notice rather than a red run.
+      - name: Check deploy secrets
+        id: secrets
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          if [ -n "$SSH_HOST" ] && [ -n "$SSH_USER" ] && [ -n "$SSH_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deploy will be skipped::SSH_HOST / SSH_USER / SSH_KEY are not set (run deploy/wizard.sh). Checks and the image build still run."
+          fi
+
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: corepack enable
+      - id: pnpm
+        run: echo "dir=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm.outputs.dir }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      # Nothing broken goes up: the same gates as CI before the image is built.
+      - name: Install, lint, check and test
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm format:check
+          pnpm check
+          pnpm test
+
+      # The image is built here, never on the VPS (a build there starves the other apps of memory).
+      # The VPS only loads the tarball and runs it.
+      - name: Build the image
+        run: |
+          docker build --tag "$IMAGE" .
+          docker save "$IMAGE" | gzip -1 > slidessoca.tar.gz
+          ls -lh slidessoca.tar.gz
+
+      # A container that dies at boot never reaches the server.
+      - name: Smoke-test the image
+        run: |
+          docker run --name smoke -d -p 127.0.0.1:3000:3000 -e ORIGIN=http://127.0.0.1:3000 "$IMAGE"
+          for _ in $(seq 1 15); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3000/health > /dev/null \
+              && curl -fsS --max-time 5 http://127.0.0.1:3000/ | grep -q '__sveltekit'; then
+              docker rm -f smoke > /dev/null
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs smoke || true
+          exit 1
+
+      - name: Skipped deploy (no secrets)
+        if: steps.secrets.outputs.ready != 'true'
+        run: |
+          echo "::notice title=Deploy skipped::skipped deploy (no secrets)"
+          {
+            echo "### Skipped deploy (no secrets)"
+            echo "Image \`$IMAGE\` built and smoke-tested. Run \`bash deploy/wizard.sh\` to set the SSH secrets."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # appleboy actions occasionally 504 while downloading their binary; re-running the job fixes it.
+      - name: Copy to server
+        if: steps.secrets.outputs.ready == 'true'
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: 'slidessoca.tar.gz,package.json'
+          target: ${{ env.REMOTE_DIR }}
+          overwrite: true
+          timeout: 300s
+
+      - name: Load, restart and probe the container
+        if: steps.secrets.outputs.ready == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          command_timeout: 30m
+          # The VPS has npm (passoca-api and guessoca deploy the same way); the docker:* scripts in
+          # package.json hold each environment's port, volume and ORIGIN.
+          script: |
+            set -e
+            cd ${{ env.REMOTE_DIR }}
+            npm run docker:load
+            npm run docker:stop:${{ env.TARGET }} || true
+            npm run docker:start:${{ env.TARGET }}
+            rm -f slidessoca.tar.gz
+            # `docker run -d` returns before the server is up: a container that dies at boot would
+            # still look like a green deploy. Probe /health and the app shell.
+            ok=0
+            for i in $(seq 1 15); do
+              if curl -fsS --max-time 5 http://127.0.0.1:${{ env.PORT }}/health > /dev/null && curl -fsS --max-time 5 http://127.0.0.1:${{ env.PORT }}/ | grep -q '__sveltekit'; then
+                ok=1; break
+              fi
+              sleep 2
+            done
+            if [ "$ok" != 1 ]; then
+              echo "Container is not serving after start:"
+              docker ps -a --filter name=${{ env.CONTAINER }}
+              docker logs --tail 100 ${{ env.CONTAINER }} || true
+              exit 1
+            fi
+            # Only this app's dangling images (LABEL in the Dockerfile); other apps' images stay.
+            docker image prune -f --filter label=app=slidessoca > /dev/null
+            echo "Deployed ${{ env.IMAGE }} as ${{ env.CONTAINER }} on 127.0.0.1:${{ env.PORT }}"

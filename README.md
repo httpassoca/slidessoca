@@ -3,9 +3,12 @@
 Make HTML slide decks with the [dssoca](https://github.com/httpassoca/dssoca) design system —
 in the browser, on desktop or phone.
 
-- **Quick create** — type a title, some text, drop images: slides lay themselves out.
-- **Markdown** — write a deck in a `.md` file ([format](docs/markdown-format.md)), upload it with
-  its images, get the whole presentation.
+- **Quick create** — type a title, some text, drop images: slides lay themselves out. Or paste
+  everything in one text box: an empty line starts a new slide, its first line is the title.
+- **Markdown** — write a deck in a `.md` file ([format](docs/markdown-format.md), also in the app
+  at `/format`), upload it with its images (or as one `.zip`), get the whole presentation.
+- **Export / import** — download any deck as Markdown (a `.zip` with its images) or as
+  `.slidessoca.json`, and import either back.
 - **Editor** — PowerPoint-style: slide sorter, drag/resize anything, inline text editing, layouts,
   themes, speaker notes.
 - **Share** — a public link that lives for 30 days (republishing restarts the clock). Viewers get
@@ -47,3 +50,10 @@ pnpm test && pnpm check && pnpm lint
 Decks are stored in your browser; only published copies reach the server, as gzipped files that
 expire after 30 days ([ADR 0001](docs/adr/0001-storage-on-the-vps.md)). Contributor and agent
 notes: [CLAUDE.md](CLAUDE.md). Work tracker: [`agile/`](agile/README.md).
+
+## Deploy
+
+`develop` deploys to slides-dev.passoca.dev and `main` to slides.passoca.dev: GitHub Actions
+builds the Docker image, copies it to the VPS and restarts the container. Environments, ports,
+the data volume, backups, releases (`pnpm release`) and the one-time setup
+(`bash deploy/wizard.sh`) are in [docs/deploy.md](docs/deploy.md).
