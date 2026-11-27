@@ -4,7 +4,7 @@
   "read mode" that lists every slide. "Make a copy" imports the deck into this browser.
 -->
 <script lang="ts">
-  import { goto } from '$app/navigation'
+  import { goto, replaceState } from '$app/navigation'
   import { page } from '$app/state'
   import { Button, Icon, toast } from 'dssoca'
   import DeckPlayer from '$lib/components/player/DeckPlayer.svelte'
@@ -13,6 +13,7 @@
   import { putDeck } from '$lib/client/db'
   import { copyDeck } from '$lib/deck/factory'
   import { deckDescription } from '$lib/deck/meta'
+  import { hashFor } from '$lib/deck/nav'
   import { validateDeck } from '$lib/deck/validate'
   import { themeAttributes, themeEntry } from '$lib/themes'
 
@@ -49,6 +50,8 @@
 
   function readFrom(i: number) {
     index = i
+    // The player reads #n when it mounts again.
+    replaceState(hashFor(i), {})
     reading = false
   }
 </script>
@@ -128,6 +131,10 @@
 </div>
 
 <style lang="scss">
+  /* Full-viewport pages: no UA body margin around the player. */
+  :global(body) {
+    margin: 0;
+  }
   .page {
     background: var(--ss-bg);
     color: var(--ss-fg);
@@ -138,6 +145,7 @@
   }
   .title {
     overflow: hidden;
+    font-size: var(--ss-size-sm);
     text-overflow: ellipsis;
     white-space: nowrap;
     font-weight: 700;

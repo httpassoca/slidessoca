@@ -29,6 +29,10 @@
 </main>
 
 <style lang="scss">
+  /* Full-viewport pages: no UA body margin around the player. */
+  :global(body) {
+    margin: 0;
+  }
   .gone {
     display: grid;
     place-content: center;

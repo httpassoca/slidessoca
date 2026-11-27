@@ -8,6 +8,7 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import { Button, EmptyState, Icon, Link, Spinner } from 'dssoca'
   import SlideView from '$lib/components/SlideView.svelte'
@@ -246,7 +247,7 @@
             <Icon name={icon(fs.on ? 'shrink' : 'expand')} />
           </Button>
         {/if}
-        <Link href="/edit/{id}" size="sm">Exit</Link>
+        <Button size="sm" variant="ghost" onclick={() => goto(`/edit/${id}`)}>Exit</Button>
       </div>
     </header>
 
@@ -311,6 +312,10 @@
 {/if}
 
 <style lang="scss">
+  /* Full-viewport pages: no UA body margin around the player. */
+  :global(body) {
+    margin: 0;
+  }
   .center {
     display: grid;
     place-content: center;
@@ -333,7 +338,8 @@
       'current side'
       'controls side';
     block-size: 100dvh;
-    background: var(--ss-bg-inset);
+    /* Letterbox: a shade darker than the deck background so the slide edge reads. */
+    background: color-mix(in oklch, var(--ss-bg) 82%, var(--ss-black));
     color: var(--ss-fg);
     overflow: hidden;
   }
@@ -348,7 +354,7 @@
     border-block-end: 1px solid var(--ss-line);
   }
   .title {
-    flex: 1;
+    flex: 1 1 12rem;
     min-inline-size: 0;
     margin: 0;
     font-size: var(--ss-size-body);

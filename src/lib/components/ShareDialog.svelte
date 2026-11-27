@@ -7,7 +7,7 @@
   keeps the same link and restarts the 30 days.
 -->
 <script lang="ts">
-  import { Badge, Button, Icon, Input, Link, Modal, toast } from 'dssoca'
+  import { Badge, Button, Icon, Input, Modal, toast } from 'dssoca'
   import type { Deck } from '$lib/deck/types'
   import { isLive, publish, shareErrorMessage, shareUrl, unpublish } from '$lib/client/share'
   import { icon } from '$lib/components/player/icons'
@@ -120,7 +120,10 @@
             Share…
           </Button>
         {/if}
-        <Link href={url} external size="sm">Open</Link>
+        <Button size="sm" variant="ghost" onclick={() => window.open(url, '_blank', 'noopener')}>
+          {#snippet leading()}<Icon name="external" />{/snippet}
+          Open
+        </Button>
       </div>
 
       <p class="expiry">

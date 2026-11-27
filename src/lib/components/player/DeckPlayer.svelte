@@ -126,11 +126,17 @@
     mounted = true
   })
 
-  // Keep #n in the URL (shallow, no history entry per slide).
+  // Keep #n in the URL (shallow, no history entry per slide). A clean URL stays clean on slide 1.
+  // Deferred: during hydration this runs before SvelteKit's router has its root component.
   $effect(() => {
     if (!hash || !mounted) return
-    const want = hashFor(clampIndex(index, count))
-    if (location.hash !== want) replaceState(want, {})
+    const i = clampIndex(index, count)
+    const want = hashFor(i)
+    if (location.hash === want || (i === 0 && !location.hash)) return
+    const t = setTimeout(() => {
+      if (location.hash !== want) replaceState(want, {})
+    })
+    return () => clearTimeout(t)
   })
 
   $effect(() => {
@@ -239,7 +245,8 @@
     inline-size: 100%;
     block-size: 100%;
     min-block-size: 0;
-    background: var(--ss-bg-inset);
+    /* Letterbox: a shade darker than the deck background so the slide edge reads. */
+    background: color-mix(in oklch, var(--ss-bg) 82%, var(--ss-black));
     color: var(--ss-fg);
     overflow: hidden;
   }

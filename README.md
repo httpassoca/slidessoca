@@ -8,8 +8,13 @@ in the browser, on desktop or phone.
   its images, get the whole presentation.
 - **Editor** — PowerPoint-style: slide sorter, drag/resize anything, inline text editing, layouts,
   themes, speaker notes.
-- **Share** — a public link that lives for 30 days (republishing restarts the clock). Viewers get
-  a phone-friendly viewer with swipe, fullscreen and a slide overview.
+- **Share** — a public link that lives for 30 days (republishing restarts the clock; the link is a
+  snapshot, so republish after editing). Viewers get a phone-friendly viewer: swipe or tap the
+  left/right of a slide, arrow keys, fullscreen, an overview of every slide, a scrolling read
+  mode, `#3` links to a slide, and "Make a copy" to edit the deck in their own browser.
+- **Present** — presenter view with the next slide, speaker notes and a timer, plus an audience
+  window that follows along. Keys: ←/→ Space PageUp/PageDown Home/End · F fullscreen ·
+  O/Esc overview · N notes.
 - **Themes** — dssoca dark/light plus every passoca.dev theme (Dracula, Tokyo Night, Gruvbox,
   Nord, Solarized, Coffee).
 

@@ -192,6 +192,17 @@
       line-height: 1.08;
       letter-spacing: -0.01em;
     }
+    /* dssoca's global type styles (p, h1…, code, pre) use fixed px sizes and colours; inside a
+       slide everything scales with the box (--px · cqw) and takes the element's colour/font.
+       :where() keeps this at zero specificity so the rules below still apply. */
+    .inner :global(:where(p, h1, h2, h3, h4, ul, ol, li, blockquote, a, code, pre)) {
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      color: inherit;
+      letter-spacing: inherit;
+      text-shadow: none;
+    }
     .inner :global(p) {
       margin: 0 0 0.45em;
     }
@@ -201,6 +212,9 @@
     .inner :global(:is(ul, ol)) {
       margin: 0;
       padding-inline-start: 1.2em;
+    }
+    .inner :global(ol) {
+      padding-inline-start: 1.8em;
     }
     .inner :global(li) {
       margin-block-end: 0.35em;
