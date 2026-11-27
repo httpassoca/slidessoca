@@ -13,6 +13,27 @@ in the browser, on desktop or phone.
 - **Themes** — dssoca dark/light plus every passoca.dev theme (Dracula, Tokyo Night, Gruvbox,
   Nord, Solarized, Coffee).
 
+## Editor
+
+Click to select, drag to move, pull any of the 8 handles to resize (Shift keeps the ratio, Alt
+turns snapping off), double-click — or double-tap on a phone — a text box to edit its Markdown.
+Elements snap to the canvas edges and centre and to each other. Drop image files onto the canvas
+to insert them (they are compressed in the browser first). On a phone the slide list becomes a
+strip and the inspector opens as a bottom sheet from **Properties**.
+
+| Keys                         | Does                                   |
+| ---------------------------- | -------------------------------------- |
+| Ctrl/⌘+Z, Ctrl/⌘+Shift+Z / Y | undo, redo                             |
+| Arrows (Shift = ×10)         | nudge the selected element             |
+| Delete / Backspace           | delete the selected element (or slide) |
+| Enter / Escape               | edit the selected text box / stop      |
+| Alt+↑ / Alt+↓ in the sorter  | move the slide earlier / later         |
+| Ctrl/⌘+D in the sorter       | duplicate the slide                    |
+
+Slides made from content (quick create, Markdown, the inspector's content form) stay
+_auto-laid-out_ while you only change their text; moving, resizing or adding an element makes the
+slide hand-arranged, and **Re-apply layout** turns it back.
+
 Production: <https://slides.passoca.dev> · development: <https://slides-dev.passoca.dev>
 
 ## Develop
