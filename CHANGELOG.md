@@ -12,6 +12,10 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
   fullscreen, `#n` deep links, overview grid, read mode, "Make a copy" and Open Graph tags;
   `/present/[id]` with next slide, notes, timer and a synced audience window; the Share dialog
   (publish, copy, republish, unpublish, expiry). Slide Markdown now renders formatted on the server.
+- Quick create on `/new` (slide blocks with images, or one text box), Markdown import (`.md` +
+  images or a `.zip`, paste, live preview, missing-image list), JSON import, `/format` help page,
+  Markdown export as `.zip` with images, home-page deck actions (download, duplicate, delete).
+  Fixed front-matter comments and layout round-trips in the Markdown format (SL-0003).
 - Deploy: Dockerfile, `deploy.yml` (develop → slides-dev.passoca.dev, main → slides.passoca.dev,
   image built in CI, skipped cleanly without SSH secrets), nginx blocks, `deploy/wizard.sh`,
   `pnpm release` helper and [docs/deploy.md](docs/deploy.md).
