@@ -3,6 +3,7 @@
   player root (absolute overlay) so it also works in fullscreen.
 -->
 <script lang="ts">
+  import { pad } from '$lib/deck/count'
   import { Button, Icon } from 'dssoca'
   import SlideView from '$lib/components/SlideView.svelte'
   import type { Deck } from '$lib/deck/types'
@@ -29,7 +30,7 @@
 
 <div class="overview" role="dialog" aria-modal="true" aria-label="All slides">
   <header class="head">
-    <h2>All slides <span class="count">{deck.slides.length}</span></h2>
+    <h2>All slides <span class="count">{pad(deck.slides.length, deck.slides.length)}</span></h2>
     <Button variant="ghost" size="sm" iconOnly label="Close overview (Esc)" onclick={onclose}>
       <Icon name={icon('close')} />
     </Button>
@@ -46,7 +47,7 @@
           onclick={() => onpick(i)}
         >
           <SlideView slide={s} theme={deck.theme} thumbnail />
-          <span class="num">{i + 1}</span>
+          <span class="num">{pad(i + 1, deck.slides.length)}</span>
         </button>
       </li>
     {/each}

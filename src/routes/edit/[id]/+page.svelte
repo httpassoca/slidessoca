@@ -4,6 +4,7 @@
   All editing maths is in `$lib/deck/edit` (pure, unit-tested).
 -->
 <script lang="ts">
+  import { counter } from '$lib/deck/count'
   import { beforeNavigate } from '$app/navigation'
   import { page } from '$app/state'
   import { Button, EmptyState, Icon, Menu, Spinner, toast } from 'dssoca'
@@ -184,7 +185,7 @@
 
   async function insertImages(files: File[]) {
     const ok = files.filter(isImageFile)
-    if (ok.length < files.length) toast.error('Only PNG, JPEG, WebP, GIF or AVIF images.')
+    if (ok.length < files.length) toast.error('Only PNG, JPEG, WebP, GIF or AVIF images')
     for (const f of ok) {
       try {
         const src = await compressImage(f)
@@ -198,7 +199,7 @@
   }
 
   async function replaceImage(id: string, f: File) {
-    if (!isImageFile(f)) return toast.error('Only PNG, JPEG, WebP, GIF or AVIF images.')
+    if (!isImageFile(f)) return toast.error('Only PNG, JPEG, WebP, GIF or AVIF images')
     const src = await compressImage(f)
     onslide((s) => updateElement(s, id, { src }))
   }
@@ -375,7 +376,7 @@
               <Icon name={glyph('trash')} size="sm" />
             </Button>
           {/if}
-          <span class="count">{idx + 1} / {deck.slides.length}</span>
+          <span class="count">{counter(idx, deck.slides.length)}</span>
           <span class="sheet-toggle">
             <Button
               size="sm"

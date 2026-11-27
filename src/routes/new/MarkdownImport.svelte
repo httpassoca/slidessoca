@@ -41,7 +41,7 @@
       d.assets = { ...d.assets, ...res.assets }
       if (res.skipped.length) error = `Skipped: ${res.skipped.join(', ')}`
       if (!res.markdown && !d.source && Object.keys(res.assets).length)
-        toast.info('Images added. Now add the .md file, or paste the Markdown below.')
+        toast.info('Images added, now add the .md file or paste the Markdown below')
     } catch (e) {
       error = `Could not read the files: ${(e as Error).message}`
     } finally {

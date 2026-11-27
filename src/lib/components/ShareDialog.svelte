@@ -51,7 +51,7 @@
     try {
       const updated = await publish($state.snapshot(deck) as Deck)
       onchange(updated)
-      toast.success(again ? 'Republished — same link, 30 more days.' : 'Published. Copy the link.')
+      toast.success(again ? 'Republished: same link, 30 more days' : 'Published')
     } catch (e) {
       error = shareErrorMessage(e)
       toast.error(error)
@@ -67,7 +67,7 @@
       const updated = await unpublish($state.snapshot(deck) as Deck)
       confirming = false
       onchange(updated)
-      toast.success('Unpublished. The link no longer works.')
+      toast.success('Unpublished, the link no longer works')
     } catch (e) {
       error = shareErrorMessage(e)
       toast.error(error)
@@ -79,9 +79,9 @@
   async function copy() {
     try {
       await navigator.clipboard.writeText(url)
-      toast.success('Link copied.')
+      toast.success('Link copied')
     } catch {
-      toast.error('Could not copy. Select the link and copy it yourself.')
+      toast.error('Could not copy, select the link and copy it yourself')
     }
   }
 

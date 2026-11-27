@@ -1,5 +1,6 @@
 <!-- Numbered grid of slide thumbnails (previews on /new). Drawn with SlideView, like everything. -->
 <script lang="ts">
+  import { pad } from '$lib/deck/count'
   import SlideView from './SlideView.svelte'
   import type { Slide } from '$lib/deck/types'
   import type { ThemeId } from '$lib/themes'
@@ -17,7 +18,9 @@
   {#each slides as s, i (i)}
     <li>
       <SlideView slide={s} {theme} thumbnail />
-      <span class="meta"><span class="n">{i + 1}</span>{s.content.title || s.layout}</span>
+      <span class="meta">
+        <span class="n">{pad(i + 1, slides.length)}</span>{s.content.title || s.layout}
+      </span>
     </li>
   {/each}
 </ol>

@@ -7,6 +7,7 @@
   `hash` keeps `#n` (1-based) in the URL so a slide can be linked to.
 -->
 <script lang="ts">
+  import { counter } from '$lib/deck/count'
   import { onMount, type Snippet } from 'svelte'
   import { fly } from 'svelte/transition'
   import { prefersReducedMotion } from 'svelte/motion'
@@ -181,9 +182,11 @@
           <Icon name="chevron" rotate={90} />
         </Button>
         <span class="counter">
-          <span class="sr-only">Slide </span>{count ? index + 1 : 0}<span aria-hidden="true">
-            /
-          </span><span class="sr-only"> of </span>{count}
+          <span class="sr-only">Slide {count ? index + 1 : 0} of {count}</span><span
+            aria-hidden="true"
+          >
+            {counter(index, count)}
+          </span>
         </span>
         <Button
           variant="ghost"

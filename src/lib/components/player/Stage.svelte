@@ -36,6 +36,5 @@
   }
   .frame {
     inline-size: min(100cqi, calc(100cqb * 16 / 9));
-    box-shadow: var(--ss-shadow-1);
   }
 </style>

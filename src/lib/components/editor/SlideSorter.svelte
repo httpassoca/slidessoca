@@ -4,6 +4,7 @@
   can drag a thumbnail to reorder; touch uses the Move earlier / later buttons.
 -->
 <script lang="ts">
+  import { pad } from '$lib/deck/count'
   import { tick } from 'svelte'
   import { Button, Icon, Menu, type MenuItem } from 'dssoca'
   import SlideView from '$lib/components/SlideView.svelte'
@@ -151,7 +152,7 @@
             dragFrom = null
           }}
         >
-          <span class="n" aria-hidden="true">{i + 1}</span>
+          <span class="n" aria-hidden="true">{pad(i + 1, slides.length)}</span>
           <div class="pic"><SlideView slide={s} {theme} thumbnail /></div>
         </div>
       </li>
