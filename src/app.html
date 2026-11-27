@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-size-variant="md">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Electrolize&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400;1,700&display=swap"
+    />
+    <script>
+      // Chrome theme (not the deck theme) — restore before paint, mirrors src/lib/chrome-theme.ts.
+      try {
+        const t = localStorage.getItem('slidessoca:chrome-theme')
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+      } catch {}
+    </script>
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="hover">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

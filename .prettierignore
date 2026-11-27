@@ -1,0 +1,7 @@
+build/
+.svelte-kit/
+coverage/
+data/
+pnpm-lock.yaml
+agile/
+static/
