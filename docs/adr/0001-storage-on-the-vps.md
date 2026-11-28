@@ -5,7 +5,7 @@ Status: accepted · 2026-11-27
 ## Context
 
 Share links must work for a month and the product is free, so storage has to cost as close to
-nothing as possible. Decks can carry images.
+nothing as possible. Decks can carry images (as links since ADR 0002).
 
 ## Decision
 
@@ -15,9 +15,9 @@ nothing as possible. Decks can carry images.
   trucossoca and guessoca. Published decks are written to a Docker volume as
   `data/decks/<id>.json.gz`. **The file's mtime is its expiry time**; an hourly sweep deletes
   expired files. No database, no object storage, no new bill.
-- Images are downscaled to ≤1920px and re-encoded as WebP in the browser before they enter a
-  deck, and the JSON is gzipped on disk. Limits: 15 MB per deck, 2 GB for the whole store
-  (`507` when full), 30 publishes/hour/IP.
+- Images are http(s) links, never stored on the server (ADR 0002; this replaced compressed
+  uploads), and the JSON is gzipped on disk. Limits: 1 MB per deck (15 MB while images were
+  uploaded), 2 GB for the whole store (`507` when full), 30 publishes/hour/IP.
 - Ownership without accounts: publishing returns a random 32-char token; the server stores only
   its SHA-256. The publishing browser keeps the token and can republish (same link, restarts the
   30 days) or delete.
@@ -30,6 +30,8 @@ nothing as possible. Decks can carry images.
   against the 15 MB default (`src/lib/deck/limits.ts`, shared with the server, still overridable
   by `DECK_MAX_MB`) and blocks publishing at the limit; picked image files over 20 MB are refused
   before compression.
+- 2026-11-28 (SL-0011, ADR 0002): images are links. The size meter, the 20 MB file gate and
+  client-side compression are gone; the per-deck default is 1 MB.
 
 ## Alternatives
 

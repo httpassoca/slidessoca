@@ -35,8 +35,6 @@ class QuickDraft {
 class MarkdownDraft {
   source = $state('')
   fileName = $state('')
-  /** Image file name → compressed data URL. */
-  assets = $state<Record<string, string>>({})
   /** User overrides of the front-matter title / theme (null = use the file's). */
   title = $state<string | null>(null)
   theme = $state<ThemeId | null>(null)
@@ -44,7 +42,6 @@ class MarkdownDraft {
   reset() {
     this.source = ''
     this.fileName = ''
-    this.assets = {}
     this.title = null
     this.theme = null
   }

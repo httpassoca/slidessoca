@@ -1,115 +1,61 @@
-// Every uploaded image is downscaled and re-encoded in the browser before it enters a deck:
-// that is what keeps published decks small (cheap storage, fast links on mobile data).
+// Images are links (ADR 0002): no image file ever enters a deck. These helpers turn a drop or a
+// paste into either an image link or a short "links only" toast, never a silent no-op.
 
 import { toast } from 'dssoca'
-import { IMAGE_FILE_MAX_MB, MB } from '../deck/limits.js'
+import { checkImageUrl, LINKS_ONLY_MESSAGE } from '../deck/images.js'
 
-export const MAX_IMAGE_EDGE = 1920
-export const IMAGE_QUALITY = 0.82
-/** An already-compressed image at most this big (and ≤ MAX_IMAGE_EDGE) keeps its bytes. */
-export const KEEP_ORIGINAL_BYTES = 500 * 1024
-
-/**
- * Should an upload keep its original bytes instead of being re-encoded? Yes when it is already
- * WebP or JPEG, fits in MAX_IMAGE_EDGE on both edges and is at most KEEP_ORIGINAL_BYTES — so a
- * deck exported and imported again does not lose quality each round trip. Pure.
- */
-export function shouldKeepOriginal(f: {
-  type: string
-  width: number
-  height: number
-  bytes: number
-}): boolean {
-  return (
-    /^image\/(webp|jpeg)$/i.test(f.type) &&
-    f.width > 0 &&
-    f.height > 0 &&
-    f.width <= MAX_IMAGE_EDGE &&
-    f.height <= MAX_IMAGE_EDGE &&
-    f.bytes <= KEEP_ORIGINAL_BYTES
-  )
+type Transfer = Pick<DataTransfer, 'getData'> & {
+  files?: ArrayLike<File> | null
+  items?: ArrayLike<Pick<DataTransferItem, 'kind'>> | null
 }
 
-function loadBitmap(file: Blob): Promise<ImageBitmap | HTMLImageElement> {
-  if ('createImageBitmap' in window) return createImageBitmap(file)
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = URL.createObjectURL(file)
-  })
+/** Does this drop / paste carry files (rather than text or a link)? */
+export function hasFiles(dt: Transfer | null | undefined): boolean {
+  if (!dt) return false
+  if ((dt.files?.length ?? 0) > 0) return true
+  return Array.from(dt.items ?? []).some((i) => i.kind === 'file')
 }
 
-/**
- * File → compressed data URL (WebP, JPEG fallback). Animated GIFs pass through untouched, and so
- * do small WebP / JPEG files that are already within limits (`shouldKeepOriginal`).
- */
-export async function compressImage(file: Blob): Promise<string> {
-  if (file.type === 'image/gif') return blobToDataUrl(file)
-  const img = await loadBitmap(file)
-  const w0 = 'naturalWidth' in img ? img.naturalWidth : img.width
-  const h0 = 'naturalHeight' in img ? img.naturalHeight : img.height
-  if (shouldKeepOriginal({ type: file.type, width: w0, height: h0, bytes: file.size })) {
-    if ('close' in img) img.close()
-    return blobToDataUrl(file)
+/** The first valid image link in a drop / paste (dragging an image from another tab gives one). */
+export function transferredUrl(dt: Transfer | null | undefined): string | null {
+  if (!dt) return null
+  const raw = [dt.getData('text/uri-list'), dt.getData('text/plain')].join('\n')
+  for (const line of raw.split(/\r?\n/)) {
+    if (!line.trim() || line.startsWith('#')) continue
+    const c = checkImageUrl(line)
+    if (c.ok) return c.src
   }
-  const k = Math.min(1, MAX_IMAGE_EDGE / Math.max(w0, h0))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(w0 * k)
-  canvas.height = Math.round(h0 * k)
-  canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-  let url = canvas.toDataURL('image/webp', IMAGE_QUALITY)
-  if (!url.startsWith('data:image/webp')) url = canvas.toDataURL('image/jpeg', IMAGE_QUALITY)
-  return url
-}
-
-export function blobToDataUrl(b: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(String(r.result))
-    r.onerror = () => reject(r.error)
-    r.readAsDataURL(b)
-  })
-}
-
-export const isImageFile = (f: Pick<File, 'type'>) =>
-  /^image\/(png|jpe?g|webp|gif|avif)$/i.test(f.type)
-
-// ---------------------------------------------------------------- the gate before compressImage
-// Every place a picked / dropped / imported image enters a deck runs it through here first, so a
-// huge camera RAW-ish file is refused with a clear message instead of freezing the tab decoding.
-
-export const IMAGE_FILE_MAX_BYTES = IMAGE_FILE_MAX_MB * MB
-export const IMAGE_TYPE_MESSAGE = 'Only PNG, JPEG, WebP, GIF or AVIF images'
-
-type FileLike = Pick<File, 'name' | 'size' | 'type'>
-
-/** Size check only (for importers that work the type out from the file name). */
-export const checkImageSize = (f: Pick<File, 'name' | 'size'>): string | null =>
-  f.size > IMAGE_FILE_MAX_BYTES ? `${f.name} is over ${IMAGE_FILE_MAX_MB} MB` : null
-
-/** Why this file cannot go into a deck (wrong type, over 20 MB), or null when it can. */
-export function checkImageFile(f: FileLike): string | null {
-  if (!isImageFile(f)) return IMAGE_TYPE_MESSAGE
-  return checkImageSize(f)
+  return null
 }
 
 /**
- * The files that may be compressed; every refused one is reported through `notify` (a toast by
- * default): one message for wrong types, one per file that is too large.
+ * A drop / paste → an image link, or null. When it only carries files, `notify` (a toast by
+ * default) says that images are links.
  */
-export function acceptImages<F extends FileLike>(
-  files: F[],
-  notify: (msg: string) => void = (m) => toast.error(m),
-): F[] {
-  const ok: F[] = []
-  let wrongType = false
-  for (const f of files) {
-    const why = checkImageFile(f)
-    if (!why) ok.push(f)
-    else if (why === IMAGE_TYPE_MESSAGE) wrongType = true
-    else notify(why)
-  }
-  if (wrongType) notify(IMAGE_TYPE_MESSAGE)
-  return ok
+export function imageFromTransfer(
+  dt: Transfer | null | undefined,
+  notify: (msg: string) => void = (m) => toast.info(m),
+): string | null {
+  const url = transferredUrl(dt)
+  if (url) return url
+  if (hasFiles(dt)) notify(LINKS_ONLY_MESSAGE)
+  return null
+}
+
+/** Natural size of a linked image (for placing it), or undefined when it does not load. */
+export function naturalSize(src: string): Promise<{ w: number; h: number } | undefined> {
+  return new Promise((resolve) => {
+    const im = new Image()
+    im.referrerPolicy = 'no-referrer'
+    const timer = setTimeout(() => resolve(undefined), 8000)
+    im.onload = () => {
+      clearTimeout(timer)
+      resolve({ w: im.naturalWidth, h: im.naturalHeight })
+    }
+    im.onerror = () => {
+      clearTimeout(timer)
+      resolve(undefined)
+    }
+    im.src = src
+  })
 }

@@ -54,7 +54,7 @@ export function decksFromBackup(entries: ZipEntry[]): RestoredBackup {
       continue
     }
     try {
-      const deck = validateDeck(JSON.parse(dec.decode(e.data)))
+      const deck = validateDeck(JSON.parse(dec.decode(e.data)), { allowDataImages: true })
       out.decks.push({ ...deck, id: newId() })
     } catch {
       out.skipped.push(e.name)

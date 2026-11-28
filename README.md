@@ -3,11 +3,15 @@
 Make HTML slide decks with the [dssoca](https://github.com/httpassoca/dssoca) design system —
 in the browser, on desktop or phone.
 
-- **Quick create** — type a title, some text, drop images: slides lay themselves out. Or paste
+- **Quick create** — type a title, some text, paste image links: slides lay themselves out. Or paste
   everything in one text box: a line with only `---` starts a new slide, its first line is the title.
 - **Markdown** — write a deck in a `.md` file ([format](docs/markdown-format.md), also in the app
-  at `/format`), upload it with its images (or as one `.zip`), get the whole presentation.
-- **Export / import** — download any deck as Markdown (a `.zip` with its images) or as
+  at `/format`), pick it (or a `.zip` with it) or paste it, get the whole presentation.
+- **Images are links** — every image is an `https://` URL to a picture on the web, never an
+  upload ([ADR 0002](docs/adr/0002-images-are-links.md)), so decks stay tiny. Paste a link, see a
+  preview, add alt text. Older decks with uploaded images still open and present, but must
+  swap those for links before publishing.
+- **Export / import** — download any deck as Markdown or as
   `.slidessoca.json`, and import either back.
 - **Downloads** — any deck (from the editor, the deck list or a shared link) as one
   self-contained `.html` that plays offline by double-clicking (←/→ Space Home/End, swipe, tap,
@@ -20,8 +24,7 @@ in the browser, on desktop or phone.
   themes, speaker notes.
 - **Share** — a public link that lives for 30 days (republishing restarts the clock; the link is a
   snapshot, so republish after editing). Speaker notes stay out of the shared copy unless you
-  tick "Include speaker notes" (remembered per deck); a meter shows the upload size against the
-  15 MB limit and warns from 12 MB. Viewers get a phone-friendly viewer: swipe or tap the
+  tick "Include speaker notes" (remembered per deck). Viewers get a phone-friendly viewer: swipe or tap the
   left/right of a slide, arrow keys, fullscreen, an overview of every slide, a scrolling read
   mode, `#3` links to a slide, and "Make a copy" to edit the deck in their own browser. Where
   the browser has no fullscreen (iPhone Safari) a one-time hint says to tap the middle of the
@@ -36,8 +39,8 @@ in the browser, on desktop or phone.
 
 Click to select, drag to move, pull any of the 8 handles to resize (Shift keeps the ratio, Alt
 turns snapping off), double-click — or double-tap on a phone — a text box to edit its Markdown.
-Elements snap to the canvas edges and centre and to each other. Drop image files onto the canvas
-to insert them (they are compressed in the browser first; files over 20 MB are refused). On a phone the slide list becomes a
+Elements snap to the canvas edges and centre and to each other. **Image** inserts a picture by
+its URL (drag an image from another browser tab onto the canvas to drop its link). On a phone the slide list becomes a
 strip and the inspector opens as a bottom sheet from **Properties**.
 
 | Keys                         | Does                                   |

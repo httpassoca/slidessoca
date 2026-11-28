@@ -62,7 +62,7 @@ export const deckToJson = (deck: Deck) => JSON.stringify(publicDeck(deck, { note
  * timestamps, no share info. Throws `DeckError` / `SyntaxError` with a readable message.
  */
 export function importDeckJson(text: string): Deck {
-  const deck = validateDeck(JSON.parse(text))
+  const deck = validateDeck(JSON.parse(text), { allowDataImages: true })
   const now = new Date().toISOString()
   return { ...deck, id: newId(), createdAt: now, updatedAt: now }
 }

@@ -1,8 +1,10 @@
 # The slidessoca Markdown format
 
-One `.md` file = one deck. Upload it on **/new → Markdown** together with the images it
-references: select (or drag in) the `.md` and the image files together — or one `.zip` holding
-them. You can also paste the Markdown, and add missing images afterwards.
+One `.md` file = one deck. Pick (or drag in) the `.md` on **/new → Markdown**, or a `.zip`
+holding it, or just paste the Markdown. **Images are links**: write each one as a full
+`https://` URL to a picture on the web. Image files are not uploaded — a local path like
+`cat.jpg` (or an image inside the zip) is not embedded; the import shows a warning for each one
+so you can swap in a link.
 
 ```markdown
 ---
@@ -31,7 +33,7 @@ Speaker notes: everything after a `Note:` line, until the next ---.
 ## A photo slide
 
 Text goes beside the image.
-![A cat on a keyboard](cat.jpg)
+![A tabby cat](https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Cat_November_2010-1a.jpg/1280px-Cat_November_2010-1a.jpg)
 
 ---
 
@@ -40,8 +42,8 @@ Text goes beside the image.
 
 ---
 
-![First](one.png)
-![Second](https://example.com/two.png)
+![A cat in the sun](https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Cat_November_2010-1a.jpg/1280px-Cat_November_2010-1a.jpg)
+![A cat on snow](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Felis_catus-cat_on_snow.jpg/1280px-Felis_catus-cat_on_snow.jpg)
 ```
 
 ## Rules
@@ -52,7 +54,7 @@ Text goes beside the image.
 | Title           | first `#`, `##` or `###` heading                                                                                                |
 | Subtitle        | a second heading right after the title, or the single line after a `#` title                                                    |
 | Body            | everything else: paragraphs, `-`/`1.` lists, `**bold**`, `*italic*`, `` `code` ``, links                                        |
-| Image           | `![alt](file-or-url)` on its own line. Local names match uploaded files (case-insensitive, folders ignored)                     |
+| Image           | `![alt](https://…)` on its own line: a full http(s) link. Local paths are not embedded (the import warns about each one)        |
 | Quote           | `>` lines; a last line starting with `—`, `--` or `-` is the citation                                                           |
 | Speaker notes   | a `Note:` / `Notes:` line; everything after it in that slide                                                                    |
 | Layout override | `<!-- layout: NAME -->` — `title`, `section`, `bullets`, `image-right`, `image-left`, `image-full`, `gallery`, `quote`, `blank` |
@@ -78,7 +80,16 @@ Front matter values may end with a `# comment`; quote a value that contains ` #`
 
 ## Export
 
-**Download .md** writes the deck in this same format. A deck with uploaded images downloads as a
-`.zip` holding `deck.md` and `images/slide-N-M.webp` (slide N, image M) — upload that zip again to
-get the deck back. A layout is written as `<!-- layout: … -->` only when it differs from the
+**Download .md** writes the deck in this same format; image links stay links. An older deck that
+still holds uploaded images downloads as a `.zip` with `deck.md` and `images/slide-N-M.webp`
+(slide N, image M); importing that zip again keeps the text and warns about each image, since
+images are links now (put the files online and use their URLs). A layout is written as `<!-- layout: … -->` only when it differs from the
 automatic one. Hand-placed positions are not kept; use **Download .json** for an exact copy.
+
+## Images on other sites
+
+The browser loads each image straight from its site, without telling it which page asked
+(`no-referrer`), so most hosts that block hotlinking still show it. Wikimedia Commons
+(`upload.wikimedia.org`) works well: open the file page, pick a size and copy the image link. For
+JPG / PDF downloads the image must also allow copying (CORS); when a site does not, that slide
+gets a placeholder and the download says how many images were left out.

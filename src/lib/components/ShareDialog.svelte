@@ -4,9 +4,9 @@
   deck with its new `share` (or none) after every successful change, and with its new
   `publishNotes` when the "Include speaker notes" box is toggled; the caller saves it.
 
-  Speaker notes stay out of the shared copy unless that box is ticked (remembered per deck). The
-  meter shows the size of the exact upload against the server's limit; at the limit publishing
-  is blocked.
+  Speaker notes stay out of the shared copy unless that box is ticked (remembered per deck).
+  Images are links (ADR 0002): a legacy deck that still embeds uploaded images cannot be
+  published; the dialog lists those slides and asks for links instead.
 
   The shared copy is a snapshot: later edits stay in this browser until "Republish", which
   keeps the same link and restarts the 30 days.
@@ -15,15 +15,8 @@
   import { untrack } from 'svelte'
   import { Badge, Button, Checkbox, Icon, Input, Modal, toast } from 'dssoca'
   import type { Deck } from '$lib/deck/types'
-  import { DECK_MAX_MB, byteLength, formatMb, MB, sizeLevel } from '$lib/deck/limits'
-  import {
-    isLive,
-    publish,
-    publishBody,
-    shareErrorMessage,
-    shareUrl,
-    unpublish,
-  } from '$lib/client/share'
+  import { slidesWithUploadedImages } from '$lib/deck/images'
+  import { isLive, publish, shareErrorMessage, shareUrl, unpublish } from '$lib/client/share'
   import { icon } from '$lib/components/player/icons'
 
   interface Props {
@@ -47,11 +40,13 @@
   /** The deck as it would be published with the current checkbox. */
   const outgoing = $derived({ ...deck, publishNotes: includeNotes })
   const hasNotes = $derived(deck.slides.some((s) => s.notes.trim() !== ''))
-  // What a publish would upload, measured only while the dialog is open (it serialises images).
-  const bytes = $derived(open ? byteLength(publishBody($state.snapshot(outgoing) as Deck)) : 0)
-  const level = $derived(sizeLevel(bytes))
-  const fill = $derived(Math.min(100, (bytes / (DECK_MAX_MB * MB)) * 100))
-  const sizeText = $derived(`${formatMb(bytes)} of ${DECK_MAX_MB} MB`)
+  /** Slides (1-based) that still embed uploaded images: those block publishing. */
+  const uploaded = $derived(slidesWithUploadedImages(deck))
+  const blocked = $derived(uploaded.length > 0)
+  const slideList = (ns: number[]) =>
+    ns.length === 1
+      ? `slide ${ns[0]}`
+      : `slides ${ns.slice(0, -1).join(', ')} and ${ns[ns.length - 1]}`
 
   function setIncludeNotes(v: boolean) {
     includeNotes = v
@@ -198,31 +193,15 @@
       </p>
     </div>
 
-    <div class="size" data-level={level}>
-      <div class="size-head">
-        <span id="share-size-label">Upload size</span>
-        <span class="size-value">{sizeText}</span>
-      </div>
-      <div
-        class="bar"
-        role="meter"
-        aria-labelledby="share-size-label"
-        aria-valuemin={0}
-        aria-valuemax={DECK_MAX_MB * MB}
-        aria-valuenow={Math.min(bytes, DECK_MAX_MB * MB)}
-        aria-valuetext={sizeText}
-      >
-        <span class="fill" style:inline-size="{fill}%"></span>
-      </div>
-      {#if level === 'blocked'}
-        <p class="size-msg" role="alert">
-          Too large to publish: the limit is {DECK_MAX_MB} MB. Remove some images or replace them with
-          smaller ones.
+    {#if blocked}
+      <div class="legacy" role="alert">
+        <p>
+          <strong>Uploaded images can't be published.</strong> Images are links now: on
+          {slideList(uploaded)}, replace each uploaded image with an https:// image link (in
+          <strong>Properties</strong>).
         </p>
-      {:else if level === 'warn'}
-        <p class="size-msg">Large deck: viewers on mobile data will wait.</p>
-      {/if}
-    </div>
+      </div>
+    {/if}
 
     {#if error}<p class="error" role="alert">{error}</p>{/if}
 
@@ -261,7 +240,7 @@
           variant="primary"
           loading={busy === 'publish'}
           loadingLabel="Republishing"
-          disabled={busy === 'unpublish' || level === 'blocked'}
+          disabled={busy === 'unpublish' || blocked}
           onclick={doPublish}
         >
           Republish
@@ -272,7 +251,7 @@
           variant="primary"
           loading={busy === 'publish'}
           loadingLabel="Publishing"
-          disabled={level === 'blocked'}
+          disabled={blocked}
           onclick={doPublish}
         >
           Publish
@@ -310,43 +289,10 @@
     flex-direction: column;
     gap: var(--ss-s-1);
   }
-  .size {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ss-s-1);
+  .legacy {
+    padding: var(--ss-s-3);
+    border: 1px solid var(--ss-badge-caution-fg);
     font-size: var(--ss-size-sm);
-    --fill: var(--ss-primary);
-    &[data-level='warn'] {
-      --fill: var(--ss-badge-caution-fg);
-    }
-    &[data-level='blocked'] {
-      --fill: var(--ss-danger);
-    }
-  }
-  .size-head {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--ss-s-2);
-    color: var(--ss-fg-muted);
-  }
-  .size-value {
-    color: var(--ss-fg);
-    font-variant-numeric: tabular-nums;
-  }
-  .bar {
-    display: block;
-    block-size: var(--ss-s-2);
-    background: var(--ss-bg-inset);
-    border: 1px solid var(--ss-line);
-  }
-  .fill {
-    display: block;
-    min-inline-size: 2px;
-    block-size: 100%;
-    background: var(--fill);
-  }
-  .size-msg {
-    color: var(--fill);
   }
   .confirm {
     display: flex;

@@ -12,14 +12,15 @@
 //
 //   ## Slide title
 //   - bullet
-//   ![alt](photo.jpg)         images on their own line; local names resolve to uploaded files
+//   ![alt](https://…/a.jpg)   images on their own line, as full http(s) links (ADR 0002)
 //
 //   Note:                     everything after a Note:/Notes: line = speaker notes
 //   say this out loud
 //
 //   <!-- layout: image-left -->   optional override; otherwise the layout is picked from content
 //
-// Pure: image file names are resolved through the `assets` map the caller provides.
+// Pure. Local image paths (photo.jpg, ./img/a.png) are not embedded any more: each one is reported
+// in `missing` / `warnings` so the import can ask for a full https link.
 
 import { isThemeId, DEFAULT_THEME, type ThemeId } from '../themes.js'
 import { makeDeck, makeSlide } from './factory.js'
@@ -44,9 +45,14 @@ export interface ParsedDeck {
   title: string
   theme: ThemeId
   slides: ParsedSlide[]
-  /** Image references that could not be resolved (missing uploads). */
+  /** Image references that are not http(s) links (local paths, embedded data), in order. */
   missing: string[]
+  /** One readable warning per missing image ("Slide 3: … use a full https link"). */
+  warnings: string[]
 }
+
+/** Only http(s) links are images; anything else (a local path, a data: URL) is missing. */
+export const linkOnly = (ref: string): string | null => (/^https?:\/\//i.test(ref) ? ref : null)
 
 const FRONT = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 
@@ -84,7 +90,7 @@ const IMG_LINE = /^\s*!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)\s*$/
 
 export function parseSlide(
   src: string,
-  resolve: (ref: string) => string | null = (r) => r,
+  resolve: (ref: string) => string | null = linkOnly,
   missing: string[] = [],
 ): ParsedSlide {
   const c = emptyContent()
@@ -175,32 +181,32 @@ export function parseSlide(
   return { content: c, notes: notes.join('\n').trim(), layout }
 }
 
-/** Basename, lower-cased, without a leading ./ — how markdown refs match uploaded files. */
-export function assetKey(ref: string): string {
-  const clean = decodeURIComponent(ref.split(/[?#]/)[0]).replace(/^\.\//, '')
-  return (clean.split('/').pop() ?? clean).toLowerCase()
-}
+const shortRef = (ref: string) => (ref.length > 60 ? `${ref.slice(0, 40)}…` : ref)
 
 /**
- * Parse a whole Markdown document. `assets` maps uploaded image file names (any case/path) to
- * data URLs; http(s) refs pass through; anything else is reported in `missing`.
+ * Parse a whole Markdown document. http(s) image refs are kept; anything else is reported in
+ * `missing`, with a warning per image naming its slide.
  */
-export function parseMarkdown(src: string, assets: Record<string, string> = {}): ParsedDeck {
+export function parseMarkdown(src: string): ParsedDeck {
   const { meta, rest } = frontMatter(src.replace(/^\uFEFF/, ''))
-  const byKey = new Map(Object.entries(assets).map(([k, v]) => [assetKey(k), v]))
   const missing: string[] = []
-  const resolve = (ref: string) => {
-    if (/^https?:\/\//i.test(ref)) return ref
-    if (/^data:image\//i.test(ref)) return ref
-    return byKey.get(assetKey(ref)) ?? null
-  }
-  const slides = splitSlides(rest).map((s) => parseSlide(s, resolve, missing))
+  const warnings: string[] = []
+  const slides = splitSlides(rest).map((s, i) => {
+    const before = missing.length
+    const p = parseSlide(s, linkOnly, missing)
+    for (const ref of missing.slice(before))
+      warnings.push(
+        `Slide ${i + 1}: ${shortRef(ref)} is not a link, use a full https link to the image`,
+      )
+    return p
+  })
   const firstTitle = slides.find((s) => s.content.title)?.content.title
   return {
     title: meta.title || firstTitle || 'Untitled deck',
     theme: isThemeId(meta.theme) ? meta.theme : DEFAULT_THEME,
     slides,
     missing,
+    warnings,
   }
 }
 
