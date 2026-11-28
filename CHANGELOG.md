@@ -4,6 +4,8 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Light and light-preset decks use their own accent and derived colours inside the dark app (dssoca's semantic tokens are re-declared on every deck root).
+
 - Deck downloads (SL-0007): one self-contained `.html` with a tiny offline player (speaker notes
   with N when downloaded by the owner), a `.zip` of 1920×1080 JPGs and a 16:9 PDF, all drawn in
   the browser from SlideView. In the editor's More menu, the deck list's card menu and the shared
