@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/svelte'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte'
 import { toasts } from 'dssoca'
 import ShareDialog from '$lib/components/ShareDialog.svelte'
 import { isLive, publish, ShareError, shareErrorMessage, unpublish } from '$lib/client/share'
-import { makeDeck } from '$lib/deck/factory'
+import { makeDeck, makeSlide } from '$lib/deck/factory'
 import type { Deck, ShareInfo } from '$lib/deck/types'
 
 const DAY = 86_400_000
@@ -155,5 +155,85 @@ describe('ShareDialog', () => {
     mount({ ...makeDeck(), share: info() })
     await fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
     expect(writeText).toHaveBeenCalledWith(`${location.origin}/s/abcdefghij`)
+  })
+})
+
+describe('ShareDialog publish rules', () => {
+  const noted = (over: Partial<Deck> = {}): Deck => ({
+    ...makeDeck('Talk', 'dark', [makeSlide({ title: 'A' }, 'my private note')]),
+    ...over,
+  })
+  function mount(deck: Deck) {
+    const onchange = vi.fn()
+    render(ShareDialog, { props: { open: true, deck, onchange } })
+    return onchange
+  }
+  const sentBody = () => JSON.parse(fetchMock.mock.calls[0][1].body)
+
+  it('leaves speaker notes out by default', async () => {
+    fetchMock.mockResolvedValueOnce(json(201, info()))
+    const onchange = mount(noted())
+    const box = screen.getByRole('checkbox', { name: 'Include speaker notes' })
+    expect(box).not.toBeChecked()
+    await fireEvent.click(screen.getByRole('button', { name: 'Publish' }))
+    await waitFor(() => expect(onchange).toHaveBeenCalledOnce())
+    const body = sentBody()
+    expect(body.deck.slides[0].notes).toBe('')
+    expect(JSON.stringify(body)).not.toContain('publishNotes')
+  })
+
+  it('includes notes when ticked, and remembers the choice on the deck', async () => {
+    fetchMock.mockResolvedValueOnce(json(201, info()))
+    const onchange = mount(noted())
+    await fireEvent.click(screen.getByRole('checkbox', { name: 'Include speaker notes' }))
+    expect(onchange).toHaveBeenLastCalledWith(expect.objectContaining({ publishNotes: true }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Publish' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    const body = sentBody()
+    expect(body.deck.slides[0].notes).toBe('my private note')
+    expect(JSON.stringify(body)).not.toContain('publishNotes')
+    await waitFor(() => expect(onchange).toHaveBeenCalledTimes(2))
+    expect(onchange.mock.calls[1][0]).toMatchObject({
+      publishNotes: true,
+      share: { id: 'abcdefghij' },
+    })
+  })
+
+  it('republish uses the remembered choice', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, info()))
+    mount(noted({ share: info(), publishNotes: true }))
+    expect(screen.getByRole('checkbox', { name: 'Include speaker notes' })).toBeChecked()
+    await fireEvent.click(screen.getByRole('button', { name: 'Republish' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    expect(sentBody().deck.slides[0].notes).toBe('my private note')
+  })
+
+  it('shows the upload size against the limit', () => {
+    mount(noted())
+    const meter = screen.getByRole('meter', { name: 'Upload size' })
+    expect(meter).toHaveAttribute('aria-valuetext', '0.1 MB of 15 MB')
+    expect(screen.queryByText(/Large deck/)).not.toBeInTheDocument()
+  })
+
+  // The body sits in `content` only (no derived elements), so it is counted once.
+  const heavy = (mb: number) => {
+    const s = makeSlide({ title: 'A', body: 'x'.repeat(mb * 1024 * 1024) })
+    return makeDeck('Heavy', 'dark', [{ ...s, elements: [] }])
+  }
+
+  it('warns from 12 MB but still publishes', () => {
+    mount(heavy(12.5))
+    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '12.5 MB of 15 MB')
+    expect(screen.getByText(/Large deck: viewers on mobile data will wait/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Publish' })).not.toBeDisabled()
+  })
+
+  it('blocks publishing and republishing at 15 MB', () => {
+    mount(heavy(15))
+    expect(screen.getByRole('alert')).toHaveTextContent(/Remove some images or replace them/)
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled()
+    cleanup()
+    mount({ ...heavy(15), share: info() })
+    expect(screen.getByRole('button', { name: 'Republish' })).toBeDisabled()
   })
 })

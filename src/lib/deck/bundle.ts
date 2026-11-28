@@ -54,8 +54,8 @@ export function deckToBundle(deck: Deck): ZipEntry[] {
   return [{ name: 'deck.md', data: new TextEncoder().encode(md) }, ...files]
 }
 
-/** JSON export: the deck minus private share data. */
-export const deckToJson = (deck: Deck) => JSON.stringify(publicDeck(deck))
+/** JSON export (the owner's own backup): the deck minus private share data, notes kept. */
+export const deckToJson = (deck: Deck) => JSON.stringify(publicDeck(deck, { notes: true }))
 
 /**
  * An exported `.slidessoca.json` (untrusted) → a new local deck: validated, fresh id, fresh

@@ -14,7 +14,7 @@ import { unzip } from '$lib/deck/zip'
 const enc = (s: string) => new TextEncoder().encode(s)
 
 function decks() {
-  const a = makeDeck('Talk', 'light', [makeSlide({ title: 'One', body: 'x' })])
+  const a = makeDeck('Talk', 'light', [makeSlide({ title: 'One', body: 'x' }, 'Say hi first')])
   a.share = {
     id: 'abc',
     token: 'secret-token',
@@ -46,6 +46,7 @@ describe('backup zip', () => {
     expect(restored.decks.map((d) => d.title)).toEqual(src.map((d) => d.title))
     expect(restored.decks.map((d) => d.theme)).toEqual(src.map((d) => d.theme))
     expect(restored.decks[0].slides).toEqual(src[0].slides)
+    expect(restored.decks[0].slides[0].notes).toBe('Say hi first') // backups keep speaker notes
     // Fresh ids (restoring never overwrites), original timestamps, no edit token.
     restored.decks.forEach((d, i) => {
       expect(d.id).not.toBe(src[i].id)

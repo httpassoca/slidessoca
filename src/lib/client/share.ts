@@ -1,5 +1,6 @@
 // Publishing = upload a copy to the server and keep the secret edit token in the local deck.
 import { publicDeck } from '../deck/factory.js'
+import { DECK_MAX_MB } from '../deck/limits.js'
 import type { Deck, ShareInfo } from '../deck/types.js'
 
 /** A failed share request. `status` is the HTTP status, 0 when the server was unreachable. */
@@ -31,9 +32,16 @@ async function call(url: string, init: RequestInit): Promise<Response> {
   return res
 }
 
+/**
+ * The exact JSON body a publish uploads: the public copy, speaker notes only when the deck's
+ * remembered choice (`publishNotes`) says so. The Share dialog's size meter measures this.
+ */
+export const publishBody = (deck: Deck) =>
+  JSON.stringify({ deck: publicDeck(deck, { notes: deck.publishNotes === true }) })
+
 /** Publish (first time) or republish (same link) — returns the deck with fresh share info. */
 export async function publish(deck: Deck): Promise<Deck> {
-  const body = JSON.stringify({ deck: publicDeck(deck) })
+  const body = publishBody(deck)
   const headers: Record<string, string> = { 'content-type': 'application/json' }
   let res: Response
   if (deck.share) {
@@ -79,7 +87,7 @@ export function shareErrorMessage(e: unknown): string {
     case 0:
       return 'Could not reach the server. Check your connection and try again.'
     case 413:
-      return 'This deck is too large to publish (15 MB max). Use fewer or smaller images.'
+      return `This deck is too large to publish (${DECK_MAX_MB} MB max). Use fewer or smaller images.`
     case 429:
       return 'Too many publishes from this network. Try again in an hour.'
     case 507:

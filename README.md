@@ -15,7 +15,9 @@ in the browser, on desktop or phone.
 - **Editor** — PowerPoint-style: slide sorter, drag/resize anything, inline text editing, layouts,
   themes, speaker notes.
 - **Share** — a public link that lives for 30 days (republishing restarts the clock; the link is a
-  snapshot, so republish after editing). Viewers get a phone-friendly viewer: swipe or tap the
+  snapshot, so republish after editing). Speaker notes stay out of the shared copy unless you
+  tick "Include speaker notes" (remembered per deck); a meter shows the upload size against the
+  15 MB limit and warns from 12 MB. Viewers get a phone-friendly viewer: swipe or tap the
   left/right of a slide, arrow keys, fullscreen, an overview of every slide, a scrolling read
   mode, `#3` links to a slide, and "Make a copy" to edit the deck in their own browser. Where
   the browser has no fullscreen (iPhone Safari) a one-time hint says to tap the middle of the
@@ -31,7 +33,7 @@ in the browser, on desktop or phone.
 Click to select, drag to move, pull any of the 8 handles to resize (Shift keeps the ratio, Alt
 turns snapping off), double-click — or double-tap on a phone — a text box to edit its Markdown.
 Elements snap to the canvas edges and centre and to each other. Drop image files onto the canvas
-to insert them (they are compressed in the browser first). On a phone the slide list becomes a
+to insert them (they are compressed in the browser first; files over 20 MB are refused). On a phone the slide list becomes a
 strip and the inspector opens as a bottom sheet from **Properties**.
 
 | Keys                         | Does                                   |
