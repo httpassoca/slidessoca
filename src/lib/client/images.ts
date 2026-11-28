@@ -6,6 +6,29 @@ import { IMAGE_FILE_MAX_MB, MB } from '../deck/limits.js'
 
 export const MAX_IMAGE_EDGE = 1920
 export const IMAGE_QUALITY = 0.82
+/** An already-compressed image at most this big (and ≤ MAX_IMAGE_EDGE) keeps its bytes. */
+export const KEEP_ORIGINAL_BYTES = 500 * 1024
+
+/**
+ * Should an upload keep its original bytes instead of being re-encoded? Yes when it is already
+ * WebP or JPEG, fits in MAX_IMAGE_EDGE on both edges and is at most KEEP_ORIGINAL_BYTES — so a
+ * deck exported and imported again does not lose quality each round trip. Pure.
+ */
+export function shouldKeepOriginal(f: {
+  type: string
+  width: number
+  height: number
+  bytes: number
+}): boolean {
+  return (
+    /^image\/(webp|jpeg)$/i.test(f.type) &&
+    f.width > 0 &&
+    f.height > 0 &&
+    f.width <= MAX_IMAGE_EDGE &&
+    f.height <= MAX_IMAGE_EDGE &&
+    f.bytes <= KEEP_ORIGINAL_BYTES
+  )
+}
 
 function loadBitmap(file: Blob): Promise<ImageBitmap | HTMLImageElement> {
   if ('createImageBitmap' in window) return createImageBitmap(file)
@@ -17,12 +40,19 @@ function loadBitmap(file: Blob): Promise<ImageBitmap | HTMLImageElement> {
   })
 }
 
-/** File → compressed data URL (WebP, JPEG fallback). Animated GIFs pass through untouched. */
+/**
+ * File → compressed data URL (WebP, JPEG fallback). Animated GIFs pass through untouched, and so
+ * do small WebP / JPEG files that are already within limits (`shouldKeepOriginal`).
+ */
 export async function compressImage(file: Blob): Promise<string> {
   if (file.type === 'image/gif') return blobToDataUrl(file)
   const img = await loadBitmap(file)
   const w0 = 'naturalWidth' in img ? img.naturalWidth : img.width
   const h0 = 'naturalHeight' in img ? img.naturalHeight : img.height
+  if (shouldKeepOriginal({ type: file.type, width: w0, height: h0, bytes: file.size })) {
+    if ('close' in img) img.close()
+    return blobToDataUrl(file)
+  }
   const k = Math.min(1, MAX_IMAGE_EDGE / Math.max(w0, h0))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(w0 * k)

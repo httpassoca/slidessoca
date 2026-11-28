@@ -185,7 +185,7 @@
         autosize
         maxRows={30}
         placeholder={QUICK_EXAMPLE}
-        hint="An empty line starts a new slide; the first line of each slide is its title (unless it starts with >, - or an image). Need several paragraphs on one slide? Separate slides with a line containing only --- instead."
+        hint="A line with only --- starts a new slide; the first line of each slide is its title (unless it starts with >, - or an image)"
       />
       <div class="row">
         {#if !d.text.trim()}

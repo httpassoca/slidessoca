@@ -65,7 +65,8 @@ content)`. Moving/resizing/adding an element sets `manual = true`; "Re-apply lay
 4. **All slide text goes through `renderMarkdown()`** (DOMPurify). Never `{@html}` raw deck text.
    Images are only raster `data:` URLs or `http(s)` URLs (`safeImageSrc`) — never SVG.
 5. **Uploads are compressed client-side** (`compressImage`: ≤1920px, WebP 0.82) before they enter
-   a deck. That is what keeps storage cheap.
+   a deck. That is what keeps storage cheap. WebP/JPEG already ≤1920px and ≤500 KB keep their
+   bytes (`shouldKeepOriginal`), so export → import round trips don't lose quality.
 6. **Expiry = file mtime.** `store.ts` sets a deck file's mtime to its expiry; the hourly sweep
    deletes past ones. Republishing restarts the 30 days. Don't add a database for this.
 7. **Mobile works.** Every page is usable at 360px wide; touch targets ≥ 24px; the viewer

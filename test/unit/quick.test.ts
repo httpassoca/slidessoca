@@ -4,34 +4,56 @@ import { blockToSlide, blocksToSlides, quickDeck, splitQuickText } from '$lib/de
 const img = { src: 'data:image/webp;base64,AAAA', alt: 'cat' }
 
 describe('splitQuickText', () => {
-  it('splits slides on empty lines; first line is the title', () => {
-    expect(splitQuickText('My talk\nby me\n\nAgenda\n- one\n- two\n\n\nThanks')).toEqual([
+  it('splits slides on --- lines only; first line is the title', () => {
+    expect(splitQuickText('My talk\nby me\n---\nAgenda\n- one\n- two\n---\nThanks')).toEqual([
       { title: 'My talk', text: 'by me', images: [] },
       { title: 'Agenda', text: '- one\n- two', images: [] },
       { title: 'Thanks', text: '', images: [] },
     ])
   })
 
-  it('switches to --- separators when there is one, keeping paragraphs together', () => {
-    const blocks = splitQuickText('# Cover\nsub\n---\nStory\nPara one.\n\nPara two.\n---\n')
+  it('blank lines inside a slide stay in that slide', () => {
+    expect(splitQuickText('Story\nPara one.\n\nPara two.\n\n\nPara three.')).toEqual([
+      { title: 'Story', text: 'Para one.\n\nPara two.\n\n\nPara three.', images: [] },
+    ])
+    const blocks = splitQuickText('# Cover\nsub\n---\nStory\nPara one.\n\nPara two.')
     expect(blocks).toEqual([
       { title: 'Cover', text: 'sub', images: [] },
       { title: 'Story', text: 'Para one.\n\nPara two.', images: [] },
     ])
   })
 
+  it('ignores leading, trailing and repeated --- lines', () => {
+    expect(splitQuickText('---\n\nA\n---\n---\n  ---  \nB\nb\n---\n')).toEqual([
+      { title: 'A', text: '', images: [] },
+      { title: 'B', text: 'b', images: [] },
+    ])
+  })
+
+  it('a title line followed by a blank line keeps the body', () => {
+    expect(splitQuickText('Title\n\nBody text')).toEqual([
+      { title: 'Title', text: 'Body text', images: [] },
+    ])
+  })
+
+  it('does not split on --- inside a code fence', () => {
+    expect(splitQuickText('Code\n```\n---\n```')).toHaveLength(1)
+  })
+
   it('a slide that starts with a quote or a list has no title line', () => {
-    expect(splitQuickText('> Be brief.\n> — Me\n\n- a\n- b')).toEqual([
+    expect(splitQuickText('> Be brief.\n> — Me\n---\n- a\n- b')).toEqual([
       { title: '', text: '> Be brief.\n> — Me', images: [] },
       { title: '', text: '- a\n- b', images: [] },
     ])
-    const [q] = splitQuickText('Intro\n\n> Be brief.\n> — Me').slice(1)
+    const [q] = splitQuickText('Intro\n---\n> Be brief.\n> — Me').slice(1)
     expect(blockToSlide(q, 1).layout).toBe('quote')
   })
 
   it('handles CRLF and blank input', () => {
-    expect(splitQuickText('A\r\nb\r\n\r\nC')).toHaveLength(2)
+    expect(splitQuickText('A\r\nb\r\n---\r\nC')).toHaveLength(2)
+    expect(splitQuickText('A\r\nb\r\n\r\nC')).toHaveLength(1)
     expect(splitQuickText('  \n\n ')).toEqual([])
+    expect(splitQuickText('---\n\n---')).toEqual([])
   })
 })
 
