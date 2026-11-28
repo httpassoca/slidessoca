@@ -4,6 +4,8 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-28
+
 - Light and light-preset decks use their own accent and derived colours inside the dark app (dssoca's semantic tokens are re-declared on every deck root).
 
 - Deck downloads (SL-0007): one self-contained `.html` with a tiny offline player (speaker notes
