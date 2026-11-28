@@ -17,6 +17,7 @@
   import { glyph } from '$lib/components/editor/icons'
   import { getDeck, putDeck } from '$lib/client/db'
   import { exportJson, exportMarkdown } from '$lib/client/export'
+  import { downloadDeck } from '$lib/client/downloads'
   import { acceptImages, checkImageFile, compressImage } from '$lib/client/images'
   import {
     blankSlide,
@@ -330,6 +331,7 @@
       }}
       onmarkdown={() => exportMarkdown(fullDeck)}
       onjson={() => exportJson(fullDeck)}
+      ondownload={(kind) => downloadDeck(fullDeck, kind)}
     />
 
     <div class="body">

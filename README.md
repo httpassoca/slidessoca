@@ -9,6 +9,10 @@ in the browser, on desktop or phone.
   at `/format`), upload it with its images (or as one `.zip`), get the whole presentation.
 - **Export / import** — download any deck as Markdown (a `.zip` with its images) or as
   `.slidessoca.json`, and import either back.
+- **Downloads** — any deck (from the editor, the deck list or a shared link) as one
+  self-contained `.html` that plays offline by double-clicking (←/→ Space Home/End, swipe, tap,
+  F fullscreen, `#n` links; N shows speaker notes when the owner downloads it), as 1920×1080 JPGs
+  in a `.zip`, or as a 16:9 PDF. Everything is drawn in the browser; notes never go in images.
 - **Backup** — decks live only in this browser, so the home page keeps a quiet reminder with
   **Back up all decks** (one `.zip` of every deck's JSON) and when you last did it; a dot marks
   decks changed since. Import JSON on `/new` takes that `.zip` back and restores every deck.

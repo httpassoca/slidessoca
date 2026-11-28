@@ -15,6 +15,7 @@
   import { exportBackup, exportJson, exportMarkdown } from '$lib/client/export'
   import { PREFS, readPref, writePref } from '$lib/client/prefs'
   import { backupStatus, needsBackup } from '$lib/deck/backup'
+  import { downloadDeck } from '$lib/client/downloads'
   import { makeDeck, newId } from '$lib/deck/factory'
   import { counter, pad } from '$lib/deck/count'
   import { parseMarkdown, parsedToDeck } from '$lib/deck/markdown'
@@ -99,6 +100,21 @@
   const actionsFor = (d: DeckSummary): MenuItem[] => [
     { id: 'md', label: 'Download .md', onSelect: () => withDeck(d.id, exportMarkdown) },
     { id: 'json', label: 'Download .json', onSelect: () => withDeck(d.id, exportJson) },
+    {
+      id: 'html',
+      label: 'Download HTML',
+      onSelect: () => withDeck(d.id, (deck) => downloadDeck(deck, 'html-notes')),
+    },
+    {
+      id: 'jpg',
+      label: 'Download JPGs (.zip)',
+      onSelect: () => withDeck(d.id, (deck) => downloadDeck(deck, 'jpg')),
+    },
+    {
+      id: 'pdf',
+      label: 'Download PDF',
+      onSelect: () => withDeck(d.id, (deck) => downloadDeck(deck, 'pdf')),
+    },
     { id: 'dup', label: 'Duplicate', onSelect: () => duplicate(d.id) },
     { id: 'del', label: 'Delete…', onSelect: () => (confirmDelete = d) },
   ]
