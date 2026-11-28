@@ -70,7 +70,7 @@ describe('EditorCanvas', () => {
       onedit: vi.fn(),
       ontext: vi.fn(),
       onkey: vi.fn(),
-      onfiles: vi.fn(),
+      ondropdata: vi.fn(),
       ...over,
     }
     render(EditorCanvas, props)
@@ -108,7 +108,7 @@ describe('EditorCanvas', () => {
       onedit: vi.fn(),
       ontext: vi.fn(),
       onkey: vi.fn(),
-      onfiles: vi.fn(),
+      ondropdata: vi.fn(),
     })
     expect(container.querySelectorAll('.selection .handle')).toHaveLength(8)
   })
@@ -131,8 +131,6 @@ describe('Inspector', () => {
       element: undefined,
       theme: 'dark',
       onslide,
-      onreplaceimage: vi.fn(),
-      onaddimages: vi.fn(),
     })
     await fireEvent.input(screen.getByLabelText('Notes'), { target: { value: 'say hi' } })
     const [fn, group] = onslide.mock.calls.at(-1)!
@@ -151,8 +149,6 @@ describe('Inspector', () => {
       element: slide.elements[0],
       theme: 'dark',
       onslide: vi.fn(),
-      onreplaceimage: vi.fn(),
-      onaddimages: vi.fn(),
     })
     expect(screen.getByRole('button', { name: 'Delete element' })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Colour' })).toBeInTheDocument()

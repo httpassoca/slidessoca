@@ -42,8 +42,8 @@ VPS; the start scripts pass it with `--env-file` when the file exists.
 
 Published decks are `decks/<id>.json.gz` in the volume. **The file's mtime is its expiry**:
 publishing or republishing sets it to now + 30 days (`DECK_TTL_DAYS`), and the app deletes
-expired files at boot and every hour. There is nothing else to clean up. Limits: 15 MB per deck
-(`DECK_MAX_MB`), 2 GB for the store (`STORE_MAX_MB`, `507` when full), 30 publishes/hour/IP.
+expired files at boot and every hour. There is nothing else to clean up. Limits: 1 MB per deck
+(`DECK_MAX_MB`; images are links, ADR 0002), 2 GB for the store (`STORE_MAX_MB`, `507` when full), 30 publishes/hour/IP.
 
 On the VPS:
 

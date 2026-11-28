@@ -34,7 +34,7 @@ async function call(url: string, init: RequestInit): Promise<Response> {
 
 /**
  * The exact JSON body a publish uploads: the public copy, speaker notes only when the deck's
- * remembered choice (`publishNotes`) says so. The Share dialog's size meter measures this.
+ * remembered choice (`publishNotes`) says so.
  */
 export const publishBody = (deck: Deck) =>
   JSON.stringify({ deck: publicDeck(deck, { notes: deck.publishNotes === true }) })
@@ -87,7 +87,7 @@ export function shareErrorMessage(e: unknown): string {
     case 0:
       return 'Could not reach the server. Check your connection and try again.'
     case 413:
-      return `This deck is too large to publish (${DECK_MAX_MB} MB max). Use fewer or smaller images.`
+      return `This deck is too large to publish (${DECK_MAX_MB} MB max). Split it into smaller decks.`
     case 429:
       return 'Too many publishes from this network. Try again in an hour.'
     case 507:

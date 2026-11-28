@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { RequestEvent } from '@sveltejs/kit'
-import { makeDeck } from '$lib/deck/factory'
+import { makeDeck, makeSlide } from '$lib/deck/factory'
 
 let dir: string
 // Loaded after DATA_DIR is set: the store reads its config at import.
@@ -97,6 +97,23 @@ describe('/api/decks', () => {
       event('POST', { body: JSON.stringify({ deck: { v: 1 } }) }),
     )
     expect(bad.status).toBe(400)
+  })
+
+  it('rejects decks with uploaded (data:) images with a clear 400, on POST and PUT', async () => {
+    const legacy = makeDeck('Old deck', 'dark', [
+      makeSlide({ images: [{ src: 'data:image/png;base64,AA==', alt: 'old' }] }),
+    ])
+    const res = await call(api.POST as never, event('POST', { body: body(legacy) }))
+    expect(res.status).toBe(400)
+    expect((res.body as { message: string }).message).toMatch(
+      /Slide 1 has an uploaded image.*https:\/\/ image link/,
+    )
+    const pub = (await call(api.POST as never, event('POST', { body: body() }))).body as Pub
+    const put = await call(
+      one.PUT as never,
+      event('PUT', { id: pub.id, token: pub.token, body: body(legacy) }),
+    )
+    expect(put.status).toBe(400)
   })
 
   it('rejects decks over the size limit with 413', async () => {

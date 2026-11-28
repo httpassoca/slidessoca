@@ -17,10 +17,10 @@ export function limitWrites(event: RequestEvent) {
 
 export async function readDeck(event: RequestEvent): Promise<Deck> {
   const len = Number(event.request.headers.get('content-length') ?? 0)
-  if (len > config.maxDeckBytes) error(413, 'Deck is too large. Use fewer or smaller images.')
+  if (len > config.maxDeckBytes) error(413, 'Deck is too large. Split it into smaller decks.')
   const raw = await event.request.text()
   if (raw.length > config.maxDeckBytes)
-    error(413, 'Deck is too large. Use fewer or smaller images.')
+    error(413, 'Deck is too large. Split it into smaller decks.')
   try {
     const body = JSON.parse(raw)
     return validateDeck(body?.deck)

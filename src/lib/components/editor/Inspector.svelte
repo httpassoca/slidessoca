@@ -27,6 +27,8 @@
     type TextElement,
   } from '$lib/deck/types'
   import type { ThemeId } from '$lib/themes'
+  import { isDataImage } from '$lib/deck/images'
+  import ImageUrlField from '$lib/components/ImageUrlField.svelte'
   import { LAYOUT_LABEL } from './labels'
   import Swatches from './Swatches.svelte'
 
@@ -35,11 +37,9 @@
     element: SlideElement | undefined
     theme: ThemeId
     onslide: (fn: (s: Slide) => Slide, group?: string) => void
-    onreplaceimage: (id: string, file: File) => void
-    onaddimages: (files: File[]) => void
   }
 
-  let { slide, element, theme, onslide, onreplaceimage, onaddimages }: Props = $props()
+  let { slide, element, theme, onslide }: Props = $props()
 
   const patch = (p: Partial<SlideElement>, group?: string) => {
     const id = element?.id
@@ -56,9 +56,6 @@
     xl: 'XL',
     xxl: 'Huge',
   }
-
-  let replaceInput = $state<HTMLInputElement>()
-  let addInput = $state<HTMLInputElement>()
 
   const z = (m: ZMove) => {
     const id = element?.id
@@ -177,18 +174,21 @@
           value={img.alt}
           oninput={(e) => patch({ alt: e.currentTarget.value }, g(`alt-${img.id}`))}
         />
-        <Button size="sm" onclick={() => replaceInput?.click()}>Replace image…</Button>
-        <input
-          bind:this={replaceInput}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
-          hidden
-          onchange={(e) => {
-            const f = e.currentTarget.files?.[0]
-            if (f) onreplaceimage(img.id, f)
-            e.currentTarget.value = ''
-          }}
-        />
+        {#if isDataImage(img.src)}
+          <p class="hint legacy">
+            Uploaded image: it stays in this browser. Replace it with a link to publish the deck.
+          </p>
+        {/if}
+        {#key img.id}
+          <ImageUrlField
+            label="Image URL"
+            value={isDataImage(img.src) ? '' : img.src}
+            submitLabel="Replace image"
+            withAlt={false}
+            keep
+            onadd={({ src }) => patch({ src })}
+          />
+        {/key}
       {:else if shp}
         <Swatches
           label="Fill"
@@ -345,7 +345,7 @@
           <span class="label">Images</span>
           {#each slide.content.images as im, i (i)}
             <div class="img-row">
-              <img src={im.src} alt="" />
+              <img src={im.src} alt="" referrerpolicy="no-referrer" />
               <Input
                 label="Alt text for image {i + 1}"
                 size="sm"
@@ -370,19 +370,17 @@
               </Button>
             </div>
           {/each}
-          <Button size="sm" onclick={() => addInput?.click()}>Add images…</Button>
-          <input
-            bind:this={addInput}
-            type="file"
-            multiple
-            accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
-            hidden
-            onchange={(e) => {
-              const files = [...(e.currentTarget.files ?? [])]
-              if (files.length) onaddimages(files)
-              e.currentTarget.value = ''
-            }}
-          />
+          {#if slide.content.images.some((x) => isDataImage(x.src))}
+            <p class="hint legacy">
+              Uploaded images stay in this browser. Replace them with links to publish the deck.
+            </p>
+          {/if}
+          {#key slide.id}
+            <ImageUrlField
+              label="Add an image by URL"
+              onadd={(im) => content({ images: [...slide.content.images, im] })}
+            />
+          {/key}
         </div>
       {/if}
     </section>
@@ -455,6 +453,9 @@
     margin: 0;
     font-size: var(--ss-size-xs);
     color: var(--ss-fg-muted);
+    &.legacy {
+      color: var(--ss-badge-caution-fg);
+    }
   }
   .images {
     display: flex;

@@ -11,6 +11,7 @@ export function preloadSlides(slides: Slide[]): void {
         seen.add(e.src)
         const img = new Image()
         img.decoding = 'async'
+        img.referrerPolicy = 'no-referrer' // same as SlideView: many hosts block hotlinks by referrer
         img.src = e.src
       }
 }

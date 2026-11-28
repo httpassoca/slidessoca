@@ -123,6 +123,8 @@
           alt={thumbnail ? '' : e.alt}
           style="object-fit:{e.fit}"
           draggable="false"
+          referrerpolicy="no-referrer"
+          decoding="async"
           loading="lazy"
         />
       {:else if e.kind === 'shape'}

@@ -38,7 +38,7 @@ Some text
 
 describe('markdown format', () => {
   it('reads front matter', () => {
-    const p = parseMarkdown(SAMPLE, { 'cat.png': 'data:image/png;base64,AAAA' })
+    const p = parseMarkdown(SAMPLE)
     expect(p.title).toBe('My talk')
     expect(p.theme).toBe('dracula')
     expect(p.slides).toHaveLength(5)
@@ -57,15 +57,24 @@ describe('markdown format', () => {
     expect(s.notes).toBe('say hi')
   })
 
-  it('honours layout overrides and resolves uploaded images case-insensitively', () => {
-    const p = parseMarkdown(SAMPLE, { 'photos/cat.png': 'data:image/png;base64,AAAA' })
+  it('honours layout overrides and keeps https image links', () => {
+    const p = parseMarkdown(SAMPLE)
     expect(p.slides[2].layout).toBe('image-left')
-    expect(p.slides[2].content.images[0]).toEqual({ src: 'data:image/png;base64,AAAA', alt: 'cat' })
-    expect(p.missing).toEqual([])
+    expect(p.slides[4].content.images).toEqual([
+      { src: 'https://example.com/a.png', alt: 'a' },
+      { src: 'https://example.com/b.png', alt: 'b' },
+    ])
   })
 
-  it('reports missing images', () => {
-    expect(parseMarkdown(SAMPLE).missing).toEqual(['./Cat.PNG'])
+  it('does not embed local or data: images: one warning per image asks for an https link', () => {
+    const p = parseMarkdown(SAMPLE + '\n---\n\n## Inline\n![x](data:image/png;base64,AAAA)\n')
+    expect(p.slides[2].content.images).toEqual([])
+    expect(p.missing).toEqual(['./Cat.PNG', 'data:image/png;base64,AAAA'])
+    expect(p.warnings).toEqual([
+      'Slide 3: ./Cat.PNG is not a link, use a full https link to the image',
+      'Slide 6: data:image/png;base64,AAAA is not a link, use a full https link to the image',
+    ])
+    expect(parseMarkdown('# Hi\n![a](https://x.org/a.png)').warnings).toEqual([])
   })
 
   it('parses quotes with a cite', () => {
@@ -92,7 +101,7 @@ describe('markdown format', () => {
   })
 
   it('round-trips content through deckToMarkdown', () => {
-    const d = parsedToDeck(parseMarkdown(SAMPLE, { 'cat.png': 'data:image/png;base64,AAAA' }))
+    const d = parsedToDeck(parseMarkdown(SAMPLE))
     const again = parsedToDeck(parseMarkdown(deckToMarkdown(d)))
     expect(again.slides.map((s) => s.content)).toEqual(d.slides.map((s) => s.content))
     expect(again.slides.map((s) => s.layout)).toEqual(d.slides.map((s) => s.layout))
