@@ -1,6 +1,8 @@
 // Deck downloads (owned by SL-0003). Signatures are a contract with the editor:
 //   exportMarkdown(deck) — deck.md, or a .zip with deck.md + images/… when the deck embeds images
 //   exportJson(deck)     — <slug>.slidessoca.json (re-importable on /new → Import JSON)
+//   exportBackup(decks)  — slidessoca-backup-<date>.zip of every deck's JSON (SL-0010)
+import { backupFileName, buildBackupZip } from '../deck/backup.js'
 import { deckToBundle, deckToJson, slugify } from '../deck/bundle.js'
 import type { Deck } from '../deck/types.js'
 import { zipStore } from '../deck/zip.js'
@@ -24,6 +26,11 @@ export async function exportMarkdown(deck: Deck): Promise<void> {
   }
   const zip = zipStore(files)
   download(`${name}.zip`, new Blob([zip as BlobPart], { type: 'application/zip' }))
+}
+
+export async function exportBackup(decks: Deck[], when = new Date()): Promise<void> {
+  const zip = buildBackupZip(decks, when)
+  download(backupFileName(when), new Blob([zip as BlobPart], { type: 'application/zip' }))
 }
 
 export async function exportJson(deck: Deck): Promise<void> {

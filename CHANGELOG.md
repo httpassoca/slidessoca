@@ -8,6 +8,10 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
   with N when downloaded by the owner), a `.zip` of 1920×1080 JPGs and a 16:9 PDF, all drawn in
   the browser from SlideView. In the editor's More menu, the deck list's card menu and the shared
   viewer's bar.
+- Backup and no-fullscreen hint (SL-0010): home shows "Decks live only in this browser" with
+  **Back up all decks** (one `.zip` of every deck's JSON), the last backup time and a dot when a
+  deck changed since; `/new` Import JSON restores every deck from that `.zip`. The viewer and the
+  audience window show a one-time, dismissable hint where fullscreen isn't available (iPhone).
 - Publish rules (SL-0008): speaker notes are left out of the published copy unless "Include
   speaker notes" is ticked in the Share dialog (remembered per deck, used by Republish; JSON
   export keeps notes); an upload-size meter against the 15 MB limit (warning from 12 MB, publish

@@ -27,6 +27,7 @@
   } from '$lib/deck/nav'
   import Stage from './Stage.svelte'
   import Overview from './Overview.svelte'
+  import NoFullscreenHint from './NoFullscreenHint.svelte'
   import { gestures } from './gestures'
   import { playerKey } from './keys'
   import { fullscreenState, toggleFullscreen } from './fullscreen.svelte'
@@ -66,6 +67,7 @@
   }: Props = $props()
 
   let root = $state<HTMLElement>()
+  let bar = $state<HTMLElement>()
   let barHidden = $state(false)
   let dir = $state(1)
   let mounted = $state(false)
@@ -149,7 +151,13 @@
 
 <svelte:window onkeydown={onkey} onhashchange={() => hash && fromHash()} />
 
-<div class="player" class:fs={fs.on} bind:this={root} {...themeAttributes(deck.theme)}>
+<div
+  class="player"
+  class:fs={fs.on}
+  bind:this={root}
+  tabindex="-1"
+  {...themeAttributes(deck.theme)}
+>
   <div class="viewport">
     {#if current}
       <Stage attach={stageGestures}>
@@ -168,8 +176,14 @@
     <span style="inline-size: {count ? ((index + 1) / count) * 100 : 0}%"></span>
   </div>
 
+  <NoFullscreenHint
+    {chrome}
+    hidden={chrome && barHidden}
+    returnFocus={() => bar?.querySelector<HTMLElement>('button:not(:disabled)') ?? root}
+  />
+
   {#if chrome && !barHidden}
-    <nav class="bar" aria-label="Slide controls">
+    <nav class="bar" aria-label="Slide controls" bind:this={bar}>
       <div class="nav">
         <Button
           variant="ghost"
@@ -254,6 +268,9 @@
     background: color-mix(in oklch, var(--ss-bg) 82%, var(--ss-black));
     color: var(--ss-fg);
     overflow: hidden;
+    &:focus {
+      outline: none;
+    }
   }
   .viewport {
     flex: 1;

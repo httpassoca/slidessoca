@@ -13,6 +13,9 @@ in the browser, on desktop or phone.
   self-contained `.html` that plays offline by double-clicking (←/→ Space Home/End, swipe, tap,
   F fullscreen, `#n` links; N shows speaker notes when the owner downloads it), as 1920×1080 JPGs
   in a `.zip`, or as a 16:9 PDF. Everything is drawn in the browser; notes never go in images.
+- **Backup** — decks live only in this browser, so the home page keeps a quiet reminder with
+  **Back up all decks** (one `.zip` of every deck's JSON) and when you last did it; a dot marks
+  decks changed since. Import JSON on `/new` takes that `.zip` back and restores every deck.
 - **Editor** — PowerPoint-style: slide sorter, drag/resize anything, inline text editing, layouts,
   themes, speaker notes.
 - **Share** — a public link that lives for 30 days (republishing restarts the clock; the link is a
@@ -20,7 +23,9 @@ in the browser, on desktop or phone.
   tick "Include speaker notes" (remembered per deck); a meter shows the upload size against the
   15 MB limit and warns from 12 MB. Viewers get a phone-friendly viewer: swipe or tap the
   left/right of a slide, arrow keys, fullscreen, an overview of every slide, a scrolling read
-  mode, `#3` links to a slide, and "Make a copy" to edit the deck in their own browser.
+  mode, `#3` links to a slide, and "Make a copy" to edit the deck in their own browser. Where
+  the browser has no fullscreen (iPhone Safari) a one-time hint says to tap the middle of the
+  slide to hide the controls instead.
 - **Present** — presenter view with the next slide, speaker notes and a timer, plus an audience
   window that follows along. Keys: ←/→ Space PageUp/PageDown Home/End · F fullscreen ·
   O/Esc overview · N notes.
