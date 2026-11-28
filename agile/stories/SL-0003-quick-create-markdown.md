@@ -32,8 +32,8 @@ I also want to download any deck back as Markdown.
 ## Notes
 
 - Quick create (`/new`): "Slide by slide" blocks (title, text, images; add / reorder / remove) or
-  "One text box" — an empty line starts a slide, first line = title (a `---` line switches to
-  `---` separators; a chunk starting with `>`, a list item or an image has no title). Pure logic in
+  "One text box" — a `---` line starts a slide (SL-0009; it used to be an empty line), first
+  line = title (a chunk starting with `>`, a list item or an image has no title). Pure logic in
   `src/lib/deck/quick.ts`; drafts survive tab switches (`src/routes/new/draft.svelte.ts`).
 - Markdown tab accepts `.md`/`.markdown`/`.txt` + images, or a `.zip` (STORE + DEFLATE reader in
   `src/lib/deck/zip.ts`). Missing images are listed; adding files re-parses live.
