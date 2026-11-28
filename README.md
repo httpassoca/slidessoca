@@ -4,7 +4,7 @@ Make HTML slide decks with the [dssoca](https://github.com/httpassoca/dssoca) de
 in the browser, on desktop or phone.
 
 - **Quick create** — type a title, some text, drop images: slides lay themselves out. Or paste
-  everything in one text box: an empty line starts a new slide, its first line is the title.
+  everything in one text box: a line with only `---` starts a new slide, its first line is the title.
 - **Markdown** — write a deck in a `.md` file ([format](docs/markdown-format.md), also in the app
   at `/format`), upload it with its images (or as one `.zip`), get the whole presentation.
 - **Export / import** — download any deck as Markdown (a `.zip` with its images) or as

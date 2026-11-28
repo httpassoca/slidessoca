@@ -8,6 +8,7 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
   **Back up all decks** (one `.zip` of every deck's JSON), the last backup time and a dot when a
   deck changed since; `/new` Import JSON restores every deck from that `.zip`. The viewer and the
   audience window show a one-time, dismissable hint where fullscreen isn't available (iPhone).
+- Quick create's one text box splits slides only on a line with just `---`, like the Markdown format, so slides can hold several paragraphs; small JPEG/WebP images (≤1920px, ≤500 KB) keep their original bytes instead of being re-encoded, so export → import no longer loses quality (SL-0009).
 
 ## [0.1.0] - 2026-11-27
 

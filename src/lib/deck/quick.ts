@@ -2,14 +2,14 @@
 //
 // Two inputs feed it:
 //  - blocks (the form: one block per slide, each with a title, a text box and dropped images);
-//  - one big text box, split into blocks by `splitQuickText` (rule below).
+//  - one big text box, split into blocks on `---` lines by `splitQuickText`.
 //
 // Each block's text goes through the same slide parser as the Markdown format, so `- bullets`,
 // `**bold**`, `> quotes` and `Note:` speaker notes all work in the text box too.
 
 import { DEFAULT_THEME, type ThemeId } from '../themes.js'
 import { makeDeck, makeSlide } from './factory.js'
-import { parseSlide } from './markdown.js'
+import { parseSlide, splitSlides } from './markdown.js'
 import type { Deck, ImageRef, Slide } from './types.js'
 
 export interface QuickBlock {
@@ -19,21 +19,16 @@ export interface QuickBlock {
 }
 
 /**
- * The one-big-text-box rule:
+ * The one-big-text-box rule — the same split as the Markdown format:
  *
- * - Slides are separated by an **empty line**.
- * - If the text contains a line that is only `---`, slides are separated by `---` instead, so a
- *   slide can hold several paragraphs.
+ * - Slides are separated by a line that is only `---` (outside code fences). Blank lines inside
+ *   a slide are just paragraph breaks; leading / trailing `---` lines make no empty slides.
  * - In each slide the **first line is the title** (leading `#`s are dropped), the rest is the text
  *   — unless the slide starts with a `>` quote, a list item or an image: then it is all text.
  */
 export function splitQuickText(src: string): QuickBlock[] {
-  const text = src.replace(/\r\n?/g, '\n')
-  const dashed = /^\s*---\s*$/m.test(text)
-  const chunks = dashed ? text.split(/^\s*---\s*$/m) : text.split(/\n\s*\n/)
-  return chunks
+  return splitSlides(src.replace(/\r\n?/g, '\n'))
     .map((c) => c.replace(/^\s*\n/, '').trimEnd())
-    .filter((c) => c.trim() !== '')
     .map((c) => {
       // A slide that opens with a quote, list, image or layout comment has no title line.
       if (/^\s*(>|!\[|[-*+]\s|\d+\.\s|<!--)/.test(c))
