@@ -14,6 +14,7 @@ data
 *.log
 **/*:Zone.Identifier
 agile
-docs
+docs/*
+!docs/markdown-format.md
 deploy
 test

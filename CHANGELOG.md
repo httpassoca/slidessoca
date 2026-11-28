@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-28
+
+- Fixed the Docker image build (SL-0013): `.dockerignore` dropped `docs/markdown-format.md`,
+  which the /format page imports, so every deploy failed at `pnpm build`. A test now checks that
+  nothing src/ imports from outside src/ is ignored.
+
 ## [0.3.0] - 2026-11-28
 
 - Example decks (SL-0012): four ready-made decks (Stalker, the first computer bug, why democracy

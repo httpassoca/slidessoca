@@ -1,6 +1,6 @@
 {
   "name": "slidessoca",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "HTML slide decks on the dssoca design system — PowerPoint-style editor, Markdown import, auto-layout, 30-day share links.",
   "license": "MIT",
