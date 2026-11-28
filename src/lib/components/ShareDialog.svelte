@@ -1,15 +1,29 @@
 <!--
   Publish / republish / unpublish a deck (opened by the editor). Props are a fixed contract:
   `{ open: $bindable boolean, deck: Deck, onchange: (deck) => void }` — `onchange` receives the
-  deck with its new `share` (or none) after every successful change; the caller saves it.
+  deck with its new `share` (or none) after every successful change, and with its new
+  `publishNotes` when the "Include speaker notes" box is toggled; the caller saves it.
+
+  Speaker notes stay out of the shared copy unless that box is ticked (remembered per deck). The
+  meter shows the size of the exact upload against the server's limit; at the limit publishing
+  is blocked.
 
   The shared copy is a snapshot: later edits stay in this browser until "Republish", which
   keeps the same link and restarts the 30 days.
 -->
 <script lang="ts">
-  import { Badge, Button, Icon, Input, Modal, toast } from 'dssoca'
+  import { untrack } from 'svelte'
+  import { Badge, Button, Checkbox, Icon, Input, Modal, toast } from 'dssoca'
   import type { Deck } from '$lib/deck/types'
-  import { isLive, publish, shareErrorMessage, shareUrl, unpublish } from '$lib/client/share'
+  import { DECK_MAX_MB, byteLength, formatMb, MB, sizeLevel } from '$lib/deck/limits'
+  import {
+    isLive,
+    publish,
+    publishBody,
+    shareErrorMessage,
+    shareUrl,
+    unpublish,
+  } from '$lib/client/share'
   import { icon } from '$lib/components/player/icons'
 
   interface Props {
@@ -28,6 +42,23 @@
   const share = $derived(deck.share)
   const live = $derived(isLive(share))
   const url = $derived(share ? shareUrl(share) : '')
+  /** The checkbox; starts from the deck's remembered choice each time the dialog opens. */
+  let includeNotes = $state(false)
+  /** The deck as it would be published with the current checkbox. */
+  const outgoing = $derived({ ...deck, publishNotes: includeNotes })
+  const hasNotes = $derived(deck.slides.some((s) => s.notes.trim() !== ''))
+  // What a publish would upload, measured only while the dialog is open (it serialises images).
+  const bytes = $derived(open ? byteLength(publishBody($state.snapshot(outgoing) as Deck)) : 0)
+  const level = $derived(sizeLevel(bytes))
+  const fill = $derived(Math.min(100, (bytes / (DECK_MAX_MB * MB)) * 100))
+  const sizeText = $derived(`${formatMb(bytes)} of ${DECK_MAX_MB} MB`)
+
+  function setIncludeNotes(v: boolean) {
+    includeNotes = v
+    // Remember the choice right away, so a later Republish uses it too.
+    onchange({ ...deck, publishNotes: v })
+  }
+
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 
   const fmt = (iso: string, time = false) =>
@@ -41,6 +72,7 @@
     if (open) {
       confirming = false
       error = ''
+      includeNotes = untrack(() => deck.publishNotes === true)
     }
   })
 
@@ -49,7 +81,7 @@
     error = ''
     const again = live
     try {
-      const updated = await publish($state.snapshot(deck) as Deck)
+      const updated = await publish($state.snapshot(outgoing) as Deck)
       onchange(updated)
       toast.success(again ? 'Republished: same link, 30 more days' : 'Published')
     } catch (e) {
@@ -146,10 +178,51 @@
         view — on a phone too — for <strong>30 days</strong>. Your editable deck stays in this
         browser.
       </p>
-      <p class="muted">
-        Speaker notes are included in the copy. Images count towards a 15 MB limit.
-      </p>
     {/if}
+
+    <div class="options">
+      <Checkbox
+        label="Include speaker notes"
+        bind:checked={() => includeNotes, setIncludeNotes}
+        disabled={busy !== null}
+        describedby="share-notes-hint"
+      />
+      <p id="share-notes-hint" class="muted">
+        {#if includeNotes}
+          Anyone with the link can read your speaker notes.
+        {:else if hasNotes}
+          Your notes stay in this browser; the shared copy has none.
+        {:else}
+          This deck has no speaker notes.
+        {/if}
+      </p>
+    </div>
+
+    <div class="size" data-level={level}>
+      <div class="size-head">
+        <span id="share-size-label">Upload size</span>
+        <span class="size-value">{sizeText}</span>
+      </div>
+      <div
+        class="bar"
+        role="meter"
+        aria-labelledby="share-size-label"
+        aria-valuemin={0}
+        aria-valuemax={DECK_MAX_MB * MB}
+        aria-valuenow={Math.min(bytes, DECK_MAX_MB * MB)}
+        aria-valuetext={sizeText}
+      >
+        <span class="fill" style:inline-size="{fill}%"></span>
+      </div>
+      {#if level === 'blocked'}
+        <p class="size-msg" role="alert">
+          Too large to publish: the limit is {DECK_MAX_MB} MB. Remove some images or replace them with
+          smaller ones.
+        </p>
+      {:else if level === 'warn'}
+        <p class="size-msg">Large deck: viewers on mobile data will wait.</p>
+      {/if}
+    </div>
 
     {#if error}<p class="error" role="alert">{error}</p>{/if}
 
@@ -188,7 +261,7 @@
           variant="primary"
           loading={busy === 'publish'}
           loadingLabel="Republishing"
-          disabled={busy === 'unpublish'}
+          disabled={busy === 'unpublish' || level === 'blocked'}
           onclick={doPublish}
         >
           Republish
@@ -199,6 +272,7 @@
           variant="primary"
           loading={busy === 'publish'}
           loadingLabel="Publishing"
+          disabled={level === 'blocked'}
           onclick={doPublish}
         >
           Publish
@@ -230,6 +304,49 @@
   }
   .error {
     color: var(--ss-danger);
+  }
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ss-s-1);
+  }
+  .size {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ss-s-1);
+    font-size: var(--ss-size-sm);
+    --fill: var(--ss-primary);
+    &[data-level='warn'] {
+      --fill: var(--ss-badge-caution-fg);
+    }
+    &[data-level='blocked'] {
+      --fill: var(--ss-danger);
+    }
+  }
+  .size-head {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--ss-s-2);
+    color: var(--ss-fg-muted);
+  }
+  .size-value {
+    color: var(--ss-fg);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar {
+    display: block;
+    block-size: var(--ss-s-2);
+    background: var(--ss-bg-inset);
+    border: 1px solid var(--ss-line);
+  }
+  .fill {
+    display: block;
+    min-inline-size: 2px;
+    block-size: 100%;
+    background: var(--fill);
+  }
+  .size-msg {
+    color: var(--fill);
   }
   .confirm {
     display: flex;

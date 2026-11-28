@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Publish rules (SL-0008): speaker notes are left out of the published copy unless "Include
+  speaker notes" is ticked in the Share dialog (remembered per deck, used by Republish; JSON
+  export keeps notes); an upload-size meter against the 15 MB limit (warning from 12 MB, publish
+  blocked at the limit); image files over 20 MB are refused before compression everywhere images
+  enter a deck. Limits live in `src/lib/deck/limits.ts`.
+
 ## [0.1.0] - 2026-11-27
 
 - Unslop pass (SL-0006): zero-padded slide counter everywhere, calmer home with real sample slides in the empty state, deck actions in a menu, broken images draw a quiet frame, no hairlines around the viewer stage, toast copy without trailing periods.
