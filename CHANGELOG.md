@@ -4,6 +4,11 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Backup and no-fullscreen hint (SL-0010): home shows "Decks live only in this browser" with
+  **Back up all decks** (one `.zip` of every deck's JSON), the last backup time and a dot when a
+  deck changed since; `/new` Import JSON restores every deck from that `.zip`. The viewer and the
+  audience window show a one-time, dismissable hint where fullscreen isn't available (iPhone).
+
 ## [0.1.0] - 2026-11-27
 
 - Unslop pass (SL-0006): zero-padded slide counter everywhere, calmer home with real sample slides in the empty state, deck actions in a menu, broken images draw a quiet frame, no hairlines around the viewer stage, toast copy without trailing periods.
