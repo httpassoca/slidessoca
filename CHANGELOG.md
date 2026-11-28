@@ -4,6 +4,25 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-28
+
+- Light and light-preset decks use their own accent and derived colours inside the dark app (dssoca's semantic tokens are re-declared on every deck root).
+
+- Deck downloads (SL-0007): one self-contained `.html` with a tiny offline player (speaker notes
+  with N when downloaded by the owner), a `.zip` of 1920×1080 JPGs and a 16:9 PDF, all drawn in
+  the browser from SlideView. In the editor's More menu, the deck list's card menu and the shared
+  viewer's bar.
+- Backup and no-fullscreen hint (SL-0010): home shows "Decks live only in this browser" with
+  **Back up all decks** (one `.zip` of every deck's JSON), the last backup time and a dot when a
+  deck changed since; `/new` Import JSON restores every deck from that `.zip`. The viewer and the
+  audience window show a one-time, dismissable hint where fullscreen isn't available (iPhone).
+- Publish rules (SL-0008): speaker notes are left out of the published copy unless "Include
+  speaker notes" is ticked in the Share dialog (remembered per deck, used by Republish; JSON
+  export keeps notes); an upload-size meter against the 15 MB limit (warning from 12 MB, publish
+  blocked at the limit); image files over 20 MB are refused before compression everywhere images
+  enter a deck. Limits live in `src/lib/deck/limits.ts`.
+- Quick create's one text box splits slides only on a line with just `---`, like the Markdown format, so slides can hold several paragraphs; small JPEG/WebP images (≤1920px, ≤500 KB) keep their original bytes instead of being re-encoded, so export → import no longer loses quality (SL-0009).
+
 ## [0.1.0] - 2026-11-27
 
 - Unslop pass (SL-0006): zero-padded slide counter everywhere, calmer home with real sample slides in the empty state, deck actions in a menu, broken images draw a quiet frame, no hairlines around the viewer stage, toast copy without trailing periods.

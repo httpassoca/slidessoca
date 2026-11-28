@@ -12,6 +12,7 @@ const EXTRA = {
   reset: '<path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/>',
   screen: '<rect x="3" y="4" width="18" height="12"/><path d="M8 20h8M12 16v4"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  download: '<path d="M12 3v12M7 10l5 5 5-5M5 15v6h14v-6"/>',
 } as const
 
 for (const [k, v] of Object.entries(EXTRA)) registerIcon(k, v)

@@ -53,10 +53,20 @@ export function cloneSlide(s: Slide): Slide {
   }
 }
 
-/** Strip private share data before a deck leaves this browser. */
-export function publicDeck(d: Deck): Deck {
-  const { share: _share, ...rest } = d
-  return structuredClone(rest)
+export interface PublicDeckOptions {
+  /** Keep speaker notes in the copy (default: strip them, they are the presenter's). */
+  notes?: boolean
+}
+
+/**
+ * The copy of a deck that may leave this browser: private fields (`share` with its edit token,
+ * `publishNotes`) are dropped, and speaker notes are emptied unless `notes` is true.
+ */
+export function publicDeck(d: Deck, { notes = false }: PublicDeckOptions = {}): Deck {
+  const { share: _share, publishNotes: _notes, ...rest } = d
+  const out = structuredClone(rest)
+  if (!notes) out.slides = out.slides.map((s) => ({ ...s, notes: '' }))
+  return out
 }
 
 /**
@@ -64,7 +74,7 @@ export function publicDeck(d: Deck): Deck {
  * so publishing it creates a new link instead of touching the original.
  */
 export function copyDeck(d: Deck, now = new Date()): Deck {
-  const { share: _share, ...rest } = structuredClone(d)
+  const { share: _share, publishNotes: _notes, ...rest } = structuredClone(d)
   const ts = now.toISOString()
   return { ...rest, id: newId(), createdAt: ts, updatedAt: ts }
 }

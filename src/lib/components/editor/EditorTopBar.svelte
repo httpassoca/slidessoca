@@ -19,6 +19,8 @@
     onshare: () => void
     onmarkdown: () => void
     onjson: () => void
+    /** HTML (with speaker notes), JPGs (.zip) or PDF. */
+    ondownload: (kind: 'html-notes' | 'jpg' | 'pdf') => void
   }
 
   let {
@@ -36,6 +38,7 @@
     onshare,
     onmarkdown,
     onjson,
+    ondownload,
   }: Props = $props()
 
   const themeItems: MenuItem[] = $derived(
@@ -51,6 +54,9 @@
   const moreItems: MenuItem[] = [
     { id: 'md', label: 'Download Markdown', onSelect: () => onmarkdown() },
     { id: 'json', label: 'Download JSON', onSelect: () => onjson() },
+    { id: 'html', label: 'Download HTML', onSelect: () => ondownload('html-notes') },
+    { id: 'jpg', label: 'Download JPGs (.zip)', onSelect: () => ondownload('jpg') },
+    { id: 'pdf', label: 'Download PDF', onSelect: () => ondownload('pdf') },
   ]
 </script>
 

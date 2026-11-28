@@ -4,8 +4,18 @@
   import { onMount } from 'svelte'
   import SlideView from '$lib/components/SlideView.svelte'
   import { glyph } from '$lib/components/editor/icons'
-  import { deleteDeck, getDeck, listDecks, putDeck, type DeckSummary } from '$lib/client/db'
-  import { exportJson, exportMarkdown } from '$lib/client/export'
+  import {
+    allDecks,
+    deleteDeck,
+    getDeck,
+    listDecks,
+    putDeck,
+    type DeckSummary,
+  } from '$lib/client/db'
+  import { exportBackup, exportJson, exportMarkdown } from '$lib/client/export'
+  import { PREFS, readPref, writePref } from '$lib/client/prefs'
+  import { backupStatus, needsBackup } from '$lib/deck/backup'
+  import { downloadDeck } from '$lib/client/downloads'
   import { makeDeck, newId } from '$lib/deck/factory'
   import { counter, pad } from '$lib/deck/count'
   import { parseMarkdown, parsedToDeck } from '$lib/deck/markdown'
@@ -25,6 +35,34 @@
 
   const refresh = async () => (decks = await listDecks())
   onMount(refresh)
+
+  // Backup reminder (SL-0010): decks live only in this browser's IndexedDB.
+  let lastBackup = $state<string | null>(readPref(PREFS.lastBackup))
+  let backingUp = $state(false)
+  let now = $state(Date.now())
+  onMount(() => {
+    const t = setInterval(() => (now = Date.now()), 60_000)
+    return () => clearInterval(t)
+  })
+  const stale = $derived(needsBackup(decks ?? [], lastBackup))
+  const status = $derived(backupStatus(lastBackup, now))
+
+  async function backUp() {
+    backingUp = true
+    try {
+      const all = await allDecks()
+      const when = new Date()
+      await exportBackup(all, when)
+      lastBackup = when.toISOString()
+      now = when.getTime()
+      writePref(PREFS.lastBackup, lastBackup)
+      toast.success(all.length === 1 ? 'Backed up 1 deck' : `Backed up ${all.length} decks`)
+    } catch (e) {
+      toast.error(`Could not back up: ${(e as Error).message}`)
+    } finally {
+      backingUp = false
+    }
+  }
 
   async function blank() {
     const d = await putDeck(makeDeck())
@@ -62,6 +100,21 @@
   const actionsFor = (d: DeckSummary): MenuItem[] => [
     { id: 'md', label: 'Download .md', onSelect: () => withDeck(d.id, exportMarkdown) },
     { id: 'json', label: 'Download .json', onSelect: () => withDeck(d.id, exportJson) },
+    {
+      id: 'html',
+      label: 'Download HTML',
+      onSelect: () => withDeck(d.id, (deck) => downloadDeck(deck, 'html-notes')),
+    },
+    {
+      id: 'jpg',
+      label: 'Download JPGs (.zip)',
+      onSelect: () => withDeck(d.id, (deck) => downloadDeck(deck, 'jpg')),
+    },
+    {
+      id: 'pdf',
+      label: 'Download PDF',
+      onSelect: () => withDeck(d.id, (deck) => downloadDeck(deck, 'pdf')),
+    },
     { id: 'dup', label: 'Duplicate', onSelect: () => duplicate(d.id) },
     { id: 'del', label: 'Delete…', onSelect: () => (confirmDelete = d) },
   ]
@@ -109,6 +162,26 @@
       </div>
     </section>
   {:else if decks}
+    <section class="backup" class:stale aria-label="Backup">
+      <p>
+        {#if stale}<span class="dot" aria-hidden="true"></span>{/if}
+        <span>Decks live only in this browser. Download a backup to keep them</span>
+        <span class="when">
+          {status}{#if stale && lastBackup}, changed since{/if}
+        </span>
+      </p>
+      <div class="backup-actions">
+        <Button
+          size="sm"
+          variant={stale ? 'secondary' : 'ghost'}
+          loading={backingUp}
+          onclick={backUp}
+        >
+          Back up all decks
+        </Button>
+        <a href="/new?tab=json" class="restore hs-no-underline">Restore</a>
+      </div>
+    </section>
     <ul class="grid">
       {#each decks as d (d.id)}
         <li class="card">
@@ -245,6 +318,52 @@
     }
   }
 
+  .backup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ss-s-2) var(--ss-s-4);
+    margin-block-end: var(--ss-s-6);
+    padding-block: var(--ss-s-2);
+    border-block: 1px solid var(--ss-line);
+    color: var(--ss-fg-muted);
+    font-size: var(--ss-size-sm);
+    p {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--ss-s-1) var(--ss-s-3);
+      margin: 0;
+      min-inline-size: 0;
+      color: var(--ss-fg-muted);
+      font-size: var(--ss-size-sm);
+    }
+    &.stale p > span:not(.when) {
+      color: var(--ss-fg);
+    }
+  }
+  .when {
+    font-family: var(--ss-font-mono);
+    font-size: var(--ss-size-xs);
+    font-variant-numeric: tabular-nums;
+  }
+  .backup-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--ss-s-2);
+  }
+  .restore {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--ss-s-8);
+    padding-inline: var(--ss-s-2);
+    color: var(--ss-fg-muted);
+    font-size: var(--ss-size-sm);
+    &:hover {
+      color: var(--ss-fg);
+    }
+  }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

@@ -13,7 +13,7 @@ describe('validateDeck', () => {
     ])
     const withShare = { ...d, share: { id: 'x', token: 't', expiresAt: '', publishedAt: '' } }
     const v = validateDeck(JSON.parse(JSON.stringify(withShare)))
-    expect(v).toEqual(publicDeck(d))
+    expect(v).toEqual(publicDeck(d, { notes: true }))
     expect('share' in v).toBe(false)
   })
   it.each([

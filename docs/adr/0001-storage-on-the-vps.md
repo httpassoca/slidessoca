@@ -22,6 +22,15 @@ nothing as possible. Decks can carry images.
   its SHA-256. The publishing browser keeps the token and can republish (same link, restarts the
   30 days) or delete.
 
+## Notes
+
+- 2026-11-27 (SL-0008): the published copy carries **no speaker notes** unless the owner ticks
+  "Include speaker notes" in the Share dialog. `publicDeck(deck, { notes })` empties them; the
+  choice (`deck.publishNotes`) is local and never sent. The Share dialog measures the exact upload
+  against the 15 MB default (`src/lib/deck/limits.ts`, shared with the server, still overridable
+  by `DECK_MAX_MB`) and blocks publishing at the limit; picked image files over 20 MB are refused
+  before compression.
+
 ## Alternatives
 
 - Vercel Blob / S3 / R2: free tiers exist but add an account, a bill risk and egress limits.

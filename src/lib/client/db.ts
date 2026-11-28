@@ -46,6 +46,12 @@ export const putDeck = (d: Deck) =>
   tx('readwrite', (s) => s.put(JSON.parse(JSON.stringify(d)))).then(() => d)
 export const deleteDeck = (id: string) => tx('readwrite', (s) => s.delete(id))
 
+/** Every full deck (for "Back up all decks"), newest first. */
+export async function allDecks(): Promise<Deck[]> {
+  const all = await tx<Deck[]>('readonly', (s) => s.getAll())
+  return all.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+}
+
 export async function listDecks(): Promise<DeckSummary[]> {
   const all = await tx<Deck[]>('readonly', (s) => s.getAll())
   return all

@@ -17,6 +17,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
     globals: true,
+    // themes.ts reads dssoca/tokens.css?raw; without this vitest serves CSS imports empty.
+    css: true,
     include: ['src/**/*.{test,spec}.{js,ts}', 'test/unit/**/*.{test,spec}.{js,ts}'],
     coverage: { provider: 'v8', include: ['src/lib/**'], reporter: ['text', 'html'] },
   },

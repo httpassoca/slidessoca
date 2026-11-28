@@ -6,11 +6,12 @@
 <script lang="ts">
   import { goto, replaceState } from '$app/navigation'
   import { page } from '$app/state'
-  import { Button, Icon, toast } from 'dssoca'
+  import { Button, Icon, Menu, toast, type MenuItem } from 'dssoca'
   import DeckPlayer from '$lib/components/player/DeckPlayer.svelte'
   import SlideView from '$lib/components/SlideView.svelte'
   import { icon } from '$lib/components/player/icons'
   import { putDeck } from '$lib/client/db'
+  import { downloadDeck } from '$lib/client/downloads'
   import { copyDeck } from '$lib/deck/factory'
   import { deckDescription } from '$lib/deck/meta'
   import { hashFor } from '$lib/deck/nav'
@@ -47,6 +48,13 @@
       copying = false
     }
   }
+
+  // Shared decks carry no speaker notes, so the HTML download never has a notes panel here.
+  const downloadItems: MenuItem[] = [
+    { id: 'html', label: 'HTML', onSelect: () => downloadDeck(deck, 'html') },
+    { id: 'jpg', label: 'JPGs (.zip)', onSelect: () => downloadDeck(deck, 'jpg') },
+    { id: 'pdf', label: 'PDF', onSelect: () => downloadDeck(deck, 'pdf') },
+  ]
 
   function readFrom(i: number) {
     index = i
@@ -124,6 +132,9 @@
             <span class="wide">Read</span>
           </Button>
           {@render copyButton(true)}
+          <Menu items={downloadItems} label="Download" align="end" side="top" size="sm">
+            <Icon name={icon('download')} title="Download" />
+          </Menu>
         {/snippet}
       </DeckPlayer>
     </main>

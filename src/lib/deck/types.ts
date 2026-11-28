@@ -142,6 +142,11 @@ export interface Deck {
   createdAt: string
   updatedAt: string
   share?: ShareInfo
+  /**
+   * Private to this browser: include speaker notes when publishing (the Share dialog's checkbox,
+   * remembered per deck). Absent = no. Never sent to the server (`publicDeck()` drops it).
+   */
+  publishNotes?: boolean
 }
 
 export function emptyContent(): SlideContent {

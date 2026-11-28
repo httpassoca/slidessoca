@@ -39,6 +39,7 @@
         d.theme = null
       }
       d.assets = { ...d.assets, ...res.assets }
+      for (const msg of res.tooLarge) toast.error(msg)
       if (res.skipped.length) error = `Skipped: ${res.skipped.join(', ')}`
       if (!res.markdown && !d.source && Object.keys(res.assets).length)
         toast.info('Images added, now add the .md file or paste the Markdown below')
