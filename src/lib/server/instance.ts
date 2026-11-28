@@ -1,5 +1,6 @@
 // The process-wide store, configured from env (see .env.example). Imported by API routes only.
 import { env } from '$env/dynamic/private'
+import { DECK_MAX_MB, MB } from '../deck/limits.js'
 import { createStore } from './store.js'
 
 const num = (v: string | undefined, d: number) => (v && Number.isFinite(+v) && +v > 0 ? +v : d)
@@ -7,8 +8,8 @@ const num = (v: string | undefined, d: number) => (v && Number.isFinite(+v) && +
 export const config = {
   dir: env.DATA_DIR || './data',
   ttlDays: num(env.DECK_TTL_DAYS, 30),
-  maxStoreBytes: num(env.STORE_MAX_MB, 2048) * 1024 * 1024,
-  maxDeckBytes: num(env.DECK_MAX_MB, 15) * 1024 * 1024,
+  maxStoreBytes: num(env.STORE_MAX_MB, 2048) * MB,
+  maxDeckBytes: num(env.DECK_MAX_MB, DECK_MAX_MB) * MB,
 }
 
 export const store = createStore(config)

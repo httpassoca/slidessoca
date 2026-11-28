@@ -4,6 +4,11 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Publish rules (SL-0008): speaker notes are left out of the published copy unless "Include
+  speaker notes" is ticked in the Share dialog (remembered per deck, used by Republish; JSON
+  export keeps notes); an upload-size meter against the 15 MB limit (warning from 12 MB, publish
+  blocked at the limit); image files over 20 MB are refused before compression everywhere images
+  enter a deck. Limits live in `src/lib/deck/limits.ts`.
 - Quick create's one text box splits slides only on a line with just `---`, like the Markdown format, so slides can hold several paragraphs; small JPEG/WebP images (≤1920px, ≤500 KB) keep their original bytes instead of being re-encoded, so export → import no longer loses quality (SL-0009).
 
 ## [0.1.0] - 2026-11-27
