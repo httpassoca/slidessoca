@@ -38,7 +38,7 @@
   async function makeCopy() {
     copying = true
     try {
-      const copy = copyDeck(validateDeck($state.snapshot(deck)))
+      const copy = copyDeck(validateDeck($state.snapshot(deck), { allowDataImages: true }))
       await putDeck(copy)
       toast.success('Copied into this browser, edits stay here until you publish')
       await goto(`/edit/${copy.id}`)

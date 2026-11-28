@@ -1,20 +1,17 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { tick } from 'svelte'
-  import { Button, FileDrop, Input, SegmentedControl, Textarea, toast } from 'dssoca'
+  import { Button, Input, SegmentedControl, Textarea, toast } from 'dssoca'
+  import ImageUrlField from '$lib/components/ImageUrlField.svelte'
   import SlideGrid from '$lib/components/SlideGrid.svelte'
   import ThemePicker from '$lib/components/ThemePicker.svelte'
   import { putDeck } from '$lib/client/db'
-  import { acceptImages, compressImage } from '$lib/client/images'
   import { blocksToSlides, quickDeck, splitQuickText } from '$lib/deck/quick'
   import { QUICK_EXAMPLE } from '$lib/format-doc'
-  import { blankBlock, quick as d, type DraftBlock } from './draft.svelte'
+  import { blankBlock, quick as d } from './draft.svelte'
 
   const blocks = $derived(d.mode === 'text' ? splitQuickText(d.text) : d.blocks)
   const slides = $derived(blocksToSlides(blocks))
-  let busy = $state<Record<string, boolean>>({})
-  /** Per-block FileDrop selection, cleared once the images are in the block. */
-  let picked = $state<Record<string, File[]>>({})
   let saving = $state(false)
 
   async function add() {
@@ -34,26 +31,6 @@
   function remove(i: number) {
     d.blocks.splice(i, 1)
     if (d.blocks.length === 0) d.blocks.push(blankBlock())
-  }
-
-  async function addImages(b: DraftBlock, files: File[]) {
-    const imgs = acceptImages(files)
-    if (!imgs.length) {
-      picked[b.key] = []
-      return
-    }
-    busy[b.key] = true
-    try {
-      for (const f of imgs) {
-        const src = await compressImage(f)
-        b.images.push({ src, alt: f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ') })
-      }
-    } catch {
-      toast.error('Could not read one of the images')
-    } finally {
-      busy[b.key] = false
-      picked[b.key] = []
-    }
   }
 
   function toBlocks() {
@@ -149,7 +126,7 @@
               <ul class="imgs" aria-label="Images on slide {i + 1}">
                 {#each b.images as im, j (j)}
                   <li>
-                    <img src={im.src} alt={im.alt} />
+                    <img src={im.src} alt={im.alt} referrerpolicy="no-referrer" />
                     <Button
                       size="sm"
                       variant="ghost"
@@ -162,17 +139,7 @@
                 {/each}
               </ul>
             {/if}
-            <FileDrop
-              label="Images"
-              accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
-              multiple
-              size="sm"
-              hint={busy[b.key] ? 'Compressing…' : 'Drop or pick one or more images'}
-              bind:files={() => picked[b.key] ?? [], (v) => (picked[b.key] = v)}
-              onfiles={(files, det) => {
-                if (det.reason === 'select' || det.reason === 'drop') addImages(b, files)
-              }}
-            />
+            <ImageUrlField label="Image URL (optional)" onadd={(im) => b.images.push(im)} />
           </li>
         {/each}
       </ol>
@@ -227,6 +194,8 @@
   }
   .form {
     display: grid;
+    /* minmax(0, …): a textarea sized to its content (a long image link) must not widen the page. */
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ss-s-4);
     min-inline-size: 0;
   }

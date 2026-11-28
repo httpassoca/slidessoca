@@ -1,6 +1,10 @@
 // Untrusted input → Deck. Used by the server before storing a published deck and by the client
 // when it loads a shared deck or an imported JSON file. Rejects instead of guessing: a malformed
 // deck is an error, not something to half-render.
+//
+// Images are links (ADR 0002): new content only takes http(s) URLs. Decks made before that can
+// still hold embedded `data:` images; the browser keeps showing them (`allowDataImages` on the
+// local paths: JSON import, backup restore, copying a shared deck), the server refuses them.
 
 import { isThemeId } from '../themes.js'
 import {
@@ -39,15 +43,45 @@ function oneOf<T extends string>(v: unknown, list: readonly T[], path: string): 
   return v as T
 }
 
-/** Images: inline raster data URLs or http(s) URLs. Never javascript:, never SVG (scriptable). */
-export function safeImageSrc(v: unknown, path: string): string {
-  const s = str(v, path, 12_000_000)
-  if (/^data:image\/(png|jpe?g|webp|gif|avif);base64,[a-z0-9+/=\s]+$/i.test(s)) return s
-  if (/^https?:\/\/[^\s"'<>]+$/i.test(s)) return s
+export interface ValidateOptions {
+  /**
+   * Accept embedded raster `data:` images (legacy decks, before images became links). Only the
+   * browser's local paths pass true; the server never does.
+   */
+  allowDataImages?: boolean
+}
+
+/** Longest image link accepted. */
+export const MAX_IMAGE_URL = 4096
+
+const DATA_IMAGE = /^data:image\/(png|jpe?g|webp|gif|avif);base64,[a-z0-9+/=\s]+$/i
+const HTTP_IMAGE = /^https?:\/\/[^\s"'<>]+$/i
+
+/** Why the server refuses a deck that still embeds an uploaded image. */
+export const DATA_IMAGE_MESSAGE =
+  'Uploaded images are not accepted any more: replace it with an https:// image link.'
+
+function dataImageError(path: string): DeckError {
+  const n = /slides\[(\d+)\]/.exec(path)
+  const where = n ? `Slide ${Number(n[1]) + 1}` : 'This deck'
+  return new DeckError(`${where} has an uploaded image. ${DATA_IMAGE_MESSAGE}`)
+}
+
+/**
+ * Images: http(s) URLs, plus (legacy, `allowDataImages`) inline raster data URLs. Never
+ * javascript:, never SVG data (scriptable).
+ */
+export function safeImageSrc(v: unknown, path: string, opts: ValidateOptions = {}): string {
+  const s = str(v, path, opts.allowDataImages ? 12_000_000 : MAX_IMAGE_URL)
+  if (HTTP_IMAGE.test(s)) return s
+  if (/^data:/i.test(s)) {
+    if (!opts.allowDataImages) throw dataImageError(path)
+    if (DATA_IMAGE.test(s)) return s
+  }
   throw new DeckError(`${path}: unsupported image source`)
 }
 
-function content(v: unknown, p: string): SlideContent {
+function content(v: unknown, p: string, o: ValidateOptions): SlideContent {
   if (!isObj(v)) throw new DeckError(`${p}: expected object`)
   const images = Array.isArray(v.images) ? v.images : []
   const q = v.quote
@@ -58,7 +92,7 @@ function content(v: unknown, p: string): SlideContent {
     images: images.slice(0, 12).map((im, i) => {
       if (!isObj(im)) throw new DeckError(`${p}.images[${i}]: expected object`)
       return {
-        src: safeImageSrc(im.src, `${p}.images[${i}].src`),
+        src: safeImageSrc(im.src, `${p}.images[${i}].src`, o),
         alt: str(im.alt ?? '', `${p}.images[${i}].alt`, 500),
       }
     }),
@@ -71,7 +105,7 @@ function content(v: unknown, p: string): SlideContent {
   }
 }
 
-function element(v: unknown, p: string): SlideElement {
+function element(v: unknown, p: string, o: ValidateOptions): SlideElement {
   if (!isObj(v)) throw new DeckError(`${p}: expected object`)
   const base = {
     id: str(v.id, `${p}.id`, 64),
@@ -103,7 +137,7 @@ function element(v: unknown, p: string): SlideElement {
       return {
         ...base,
         kind: 'image',
-        src: safeImageSrc(v.src, `${p}.src`),
+        src: safeImageSrc(v.src, `${p}.src`, o),
         alt: str(v.alt ?? '', `${p}.alt`, 500),
         fit: oneOf(v.fit, ['cover', 'contain'], `${p}.fit`),
       }
@@ -120,7 +154,7 @@ function element(v: unknown, p: string): SlideElement {
   }
 }
 
-function slide(v: unknown, p: string): Slide {
+function slide(v: unknown, p: string, o: ValidateOptions): Slide {
   if (!isObj(v)) throw new DeckError(`${p}: expected object`)
   if (!Array.isArray(v.elements)) throw new DeckError(`${p}.elements: expected array`)
   if (v.elements.length > MAX_ELEMENTS) throw new DeckError(`${p}.elements: too many`)
@@ -128,14 +162,18 @@ function slide(v: unknown, p: string): Slide {
     id: str(v.id, `${p}.id`, 64),
     layout: oneOf(v.layout, LAYOUTS, `${p}.layout`),
     manual: v.manual === true,
-    content: content(v.content, `${p}.content`),
-    elements: v.elements.map((e, i) => element(e, `${p}.elements[${i}]`)),
+    content: content(v.content, `${p}.content`, o),
+    elements: v.elements.map((e, i) => element(e, `${p}.elements[${i}]`, o)),
     notes: str(v.notes ?? '', `${p}.notes`),
     background: oneOf(v.background ?? 'bg', ['bg', 'surface', 'accent'], `${p}.background`),
   }
 }
 
-export function validateDeck(v: unknown): Deck {
+/**
+ * Untrusted JSON → Deck. Strict by default (what the server stores: image links only); the
+ * browser passes `{ allowDataImages: true }` to keep loading legacy decks with embedded images.
+ */
+export function validateDeck(v: unknown, opts: ValidateOptions = {}): Deck {
   if (!isObj(v)) throw new DeckError('deck: expected object')
   if (v.v !== DECK_VERSION) throw new DeckError('deck.v: unsupported version')
   if (!Array.isArray(v.slides) || v.slides.length === 0)
@@ -147,7 +185,7 @@ export function validateDeck(v: unknown): Deck {
     id: str(v.id, 'deck.id', 64),
     title: str(v.title, 'deck.title', 300),
     theme: v.theme,
-    slides: v.slides.map((s, i) => slide(s, `deck.slides[${i}]`)),
+    slides: v.slides.map((s, i) => slide(s, `deck.slides[${i}]`, opts)),
     createdAt: str(v.createdAt, 'deck.createdAt', 40),
     updatedAt: str(v.updatedAt, 'deck.updatedAt', 40),
   }

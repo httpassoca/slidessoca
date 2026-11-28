@@ -1,8 +1,8 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { replaceState } from '$app/navigation'
+  import { afterNavigate, replaceState } from '$app/navigation'
   import { Link, Tabs } from 'dssoca'
-  import { onMount } from 'svelte'
+  import ExampleList from '$lib/components/ExampleList.svelte'
   import { EXAMPLE_MD } from '$lib/format-doc'
   import { markdown } from './draft.svelte'
   import JsonImport from './JsonImport.svelte'
@@ -13,19 +13,23 @@
     { id: 'quick', label: 'Quick create' },
     { id: 'markdown', label: 'Markdown' },
     { id: 'json', label: 'Import JSON' },
+    { id: 'examples', label: 'Examples' },
   ]
   const initial = page.url.searchParams.get('tab')
   let tab = $state(TABS.some((t) => t.id === initial) ? initial! : 'quick')
 
-  onMount(() => {
-    // /format → "Open this example": prefill the Markdown tab.
-    if (page.url.searchParams.has('example')) {
-      markdown.reset()
-      markdown.source = EXAMPLE_MD
-      markdown.fileName = 'example.md'
-      tab = 'markdown'
-      replaceState('/new?tab=markdown', {})
-    }
+  // /format → "Open this example" (or a direct link to /new?tab=markdown&example): prefill the
+  // Markdown tab before the panels mount (not in onMount, after them), and drop `example` from
+  // the URL only once the router is ready.
+  const prefill = page.url.searchParams.has('example')
+  if (prefill) {
+    markdown.reset()
+    markdown.source = EXAMPLE_MD
+    markdown.fileName = 'example.md'
+    tab = 'markdown'
+  }
+  afterNavigate(() => {
+    if (prefill && page.url.searchParams.has('example')) replaceState('/new?tab=markdown', {})
   })
 
   function onChange(id: string) {
@@ -44,7 +48,14 @@
     {#snippet panel(t)}
       {#if t.id === 'quick'}<QuickCreate />
       {:else if t.id === 'markdown'}<MarkdownImport />
-      {:else}<JsonImport />{/if}
+      {:else if t.id === 'json'}<JsonImport />
+      {:else}
+        <p class="examples-hint">
+          Ready-made decks with speaker notes. Open one to read or present it, or make a copy to
+          edit
+        </p>
+        <ExampleList />
+      {/if}
     {/snippet}
   </Tabs>
 </main>
@@ -57,6 +68,11 @@
     @media (min-width: 720px) {
       padding: var(--ss-s-6);
     }
+  }
+  .examples-hint {
+    margin: 0 0 var(--ss-s-4);
+    color: var(--ss-fg-muted);
+    font-size: var(--ss-size-sm);
   }
   .head {
     display: grid;

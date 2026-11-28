@@ -24,13 +24,15 @@ src/lib/
     layout.ts    auto-layout: SlideContent → positioned elements (autoLayout, layoutElements, relayout)
     factory.ts   makeDeck / makeSlide / cloneSlide / publicDeck
     markdown.ts  the Markdown format (spec: docs/markdown-format.md) ↔ Deck
-    validate.ts  untrusted JSON → Deck (server + client). Image src: raster data: URLs or http(s) only
+    validate.ts  untrusted JSON → Deck (server + client). Image src: http(s) only; legacy raster
+                 data: URLs only with { allowDataImages: true } (browser-local paths)
+    images.ts    image links: checkImageUrl, legacy data:-image detection (ADR 0002)
     render.ts    Markdown → sanitised HTML (no-raw-HTML marked + allowlist, works on the server;
                  + DOMPurify in the browser), COLOR_VAR token map
     nav.ts       player navigation: keys, swipe/tap gestures, #n hash, presenter sync messages
     meta.ts      plain-text deck facts (Open Graph description)
   themes.ts    THEMES = dssoca dark/light + every dssoca preset (same menu as passoca.dev)
-  client/      browser-only: db.ts (IndexedDB decks), images.ts (compress uploads), share.ts (publish API)
+  client/      browser-only: db.ts (IndexedDB decks), images.ts (drop/paste → link or toast), share.ts (publish API)
   server/      server-only: store.ts (gzipped JSON files, mtime = expiry), instance.ts, http.ts, ratelimit.ts
   components/  SlideView.svelte — THE renderer, shared by editor, thumbnails, viewer, presenter
                player/ — DeckPlayer (viewer + audience window), Stage (16:9 letterbox), Overview
@@ -63,10 +65,13 @@ content)`. Moving/resizing/adding an element sets `manual = true`; "Re-apply lay
    token for a published copy is stored in the local deck's `share` and is never sent anywhere
    except as `Authorization: Bearer` to `/api/decks/[id]`. `publicDeck()` strips it.
 4. **All slide text goes through `renderMarkdown()`** (DOMPurify). Never `{@html}` raw deck text.
-   Images are only raster `data:` URLs or `http(s)` URLs (`safeImageSrc`) — never SVG.
-5. **Uploads are compressed client-side** (`compressImage`: ≤1920px, WebP 0.82) before they enter
-   a deck. That is what keeps storage cheap. WebP/JPEG already ≤1920px and ≤500 KB keep their
-   bytes (`shouldKeepOriginal`), so export → import round trips don't lose quality.
+   Images are only `http(s)` URLs (`safeImageSrc`) — never SVG data, never javascript:.
+5. **Images are links** (ADR 0002). No image file ever enters a deck: every image input is an
+   "Image URL" field (`ImageUrlField.svelte`), and the server rejects `data:` images (400). That
+   is what keeps storage cheap. Legacy decks with embedded images still load locally
+   (`validateDeck(x, { allowDataImages: true })`) but the Share dialog blocks publishing them.
+   Image tags use `referrerpolicy="no-referrer"`; exports inline images via CORS fetch only for
+   the download. Never add a server-side image proxy (SSRF, bandwidth).
 6. **Expiry = file mtime.** `store.ts` sets a deck file's mtime to its expiry; the hourly sweep
    deletes past ones. Republishing restarts the 30 days. Don't add a database for this.
 7. **Mobile works.** Every page is usable at 360px wide; touch targets ≥ 24px; the viewer
@@ -95,7 +100,7 @@ pnpm release        # on release/x.y.z: validate bump vs last tag, draft CHANGEL
   `bash deploy/wizard.sh` (owner only). Changing a port/domain means package.json scripts,
   deploy.yml, the nginx block and the wizard together.
 - The container sets `BODY_SIZE_LIMIT=16M`; nginx `client_max_body_size 16m`. Keep both above
-  `DECK_MAX_MB`.
+  `DECK_MAX_MB` (1 MB default since images became links).
 
 ## Rules
 

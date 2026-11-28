@@ -6,18 +6,18 @@
   import { putDeck } from '$lib/client/db'
   import { download } from '$lib/client/export'
   import { readImportFiles } from '$lib/client/import'
+  import { LINKS_ONLY_MESSAGE } from '$lib/deck/images'
   import { parseMarkdown, parsedToDeck } from '$lib/deck/markdown'
   import { makeSlide } from '$lib/deck/factory'
   import { EXAMPLE_MD } from '$lib/format-doc'
   import { markdown as d } from './draft.svelte'
 
   const PLACEHOLDER = '# My talk\nA subtitle\n\n---\n\n## Agenda\n- First point\n- Second point'
-  const parsed = $derived(parseMarkdown(d.source, d.assets))
+  const parsed = $derived(parseMarkdown(d.source))
   const slides = $derived(
     parsed.slides.map((s) => makeSlide(s.content, s.notes, s.layout ?? undefined)),
   )
-  const missing = $derived([...new Set(parsed.missing)])
-  const imageNames = $derived(Object.keys(d.assets))
+  const missing = $derived(parsed.missing)
   const title = $derived(d.title ?? parsed.title)
   const theme = $derived(d.theme ?? parsed.theme)
 
@@ -38,22 +38,15 @@
         d.title = null
         d.theme = null
       }
-      d.assets = { ...d.assets, ...res.assets }
-      for (const msg of res.tooLarge) toast.error(msg)
-      if (res.skipped.length) error = `Skipped: ${res.skipped.join(', ')}`
-      if (!res.markdown && !d.source && Object.keys(res.assets).length)
-        toast.info('Images added, now add the .md file or paste the Markdown below')
+      if (res.images.length) toast.info(LINKS_ONLY_MESSAGE)
+      const unused = [...res.images, ...res.skipped]
+      if (unused.length) error = `Not used: ${unused.join(', ')}`
     } catch (e) {
       error = `Could not read the files: ${(e as Error).message}`
     } finally {
       reading = false
       picked = []
     }
-  }
-
-  function removeImage(name: string) {
-    const { [name]: _gone, ...rest } = d.assets
-    d.assets = rest
   }
 
   async function create() {
@@ -72,13 +65,13 @@
 <div class="cols">
   <section class="form" aria-label="Markdown source">
     <FileDrop
-      label="Markdown file and its images"
-      accept=".md,.markdown,.txt,.zip,image/png,image/jpeg,image/webp,image/gif,image/avif"
+      label="Markdown file"
+      accept=".md,.markdown,.txt,.zip"
       multiple
       bind:files={picked}
       hint={reading
-        ? 'Reading and compressing…'
-        : 'Select the .md together with every image it uses (or one .zip). You can add more images later.'}
+        ? 'Reading…'
+        : 'A .md file (or a .zip with one). Images are full https links inside the Markdown.'}
       {error}
       onfiles={(files, det) => {
         if (det.reason === 'select' || det.reason === 'drop') onfiles(files)
@@ -107,34 +100,15 @@
       <Button size="sm" variant="ghost" onclick={() => goto('/format')}>Format help</Button>
     </div>
 
-    {#if imageNames.length}
-      <div class="files">
-        <h3>Images <Badge tone="neutral" count={imageNames.length} label="images" /></h3>
-        <ul>
-          {#each imageNames as name (name)}
-            <li>
-              <img src={d.assets[name]} alt="" />
-              <span class="fname">{name}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-label="Remove {name}"
-                onclick={() => removeImage(name)}
-              >
-                Remove
-              </Button>
-            </li>
-          {/each}
-        </ul>
-      </div>
-    {/if}
-
     {#if missing.length}
       <div class="missing" role="status">
-        <h3><Badge tone="caution">{missing.length} missing</Badge> images not found</h3>
-        <p>Add these files with the picker above — the preview updates by itself:</p>
+        <h3><Badge tone="caution">{missing.length} missing</Badge> images are not links</h3>
+        <p>
+          Images are not uploaded: replace each one with a full https link, like
+          <code>![alt](https://…/photo.jpg)</code>. The preview updates by itself.
+        </p>
         <ul>
-          {#each missing as m (m)}<li><code>{m}</code></li>{/each}
+          {#each parsed.warnings as w, i (i)}<li>{w}</li>{/each}
         </ul>
       </div>
     {/if}
@@ -169,7 +143,7 @@
         <h2>Write slides in Markdown</h2>
         <p>
           One file is one deck. Separate slides with a line containing only <code>---</code>; the
-          first heading is the slide title; images are <code>![alt](file.jpg)</code> lines.
+          first heading is the slide title; images are <code>![alt](https://…/photo.jpg)</code> lines.
         </p>
         <p>
           The <Link href="/format">format help</Link> has every rule and an example you can open here.
@@ -191,6 +165,8 @@
   .form,
   .preview {
     display: grid;
+    /* minmax(0, …): a textarea sized to its content (a long image link) must not widen the page. */
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--ss-s-4);
     min-inline-size: 0;
   }
@@ -214,7 +190,6 @@
   h3 {
     font-size: var(--ss-size-body);
   }
-  .files,
   .missing {
     display: grid;
     gap: var(--ss-s-2);
@@ -238,23 +213,6 @@
     li {
       overflow-wrap: anywhere;
     }
-  }
-  .files li {
-    display: grid;
-    grid-template-columns: 64px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--ss-s-2);
-    img {
-      inline-size: 64px;
-      aspect-ratio: 16 / 9;
-      object-fit: cover;
-    }
-  }
-  .fname {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: var(--ss-size-sm);
   }
   .preview-head {
     display: flex;

@@ -1,22 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { copyDeck, makeDeck, makeSlide, publicDeck } from '$lib/deck/factory'
 import { deckToJson } from '$lib/deck/bundle'
-import {
-  byteLength,
-  DECK_MAX_MB,
-  DECK_WARN_MB,
-  formatMb,
-  IMAGE_FILE_MAX_MB,
-  MB,
-  sizeLevel,
-} from '$lib/deck/limits'
-import {
-  acceptImages,
-  checkImageFile,
-  checkImageSize,
-  IMAGE_FILE_MAX_BYTES,
-  IMAGE_TYPE_MESSAGE,
-} from '$lib/client/images'
+import { DECK_MAX_MB, MB } from '$lib/deck/limits'
+import { hasFiles, imageFromTransfer, transferredUrl } from '$lib/client/images'
+import { LINKS_ONLY_MESSAGE } from '$lib/deck/images'
 import { readImportFiles } from '$lib/client/import'
 import { publishBody } from '$lib/client/share'
 import { config } from '$lib/server/instance'
@@ -76,75 +63,50 @@ describe('publishBody', () => {
 })
 
 describe('limits', () => {
-  it('server default is the shared constant', () => {
-    expect(DECK_MAX_MB).toBe(15)
-    expect(DECK_WARN_MB).toBe(12)
-    expect(IMAGE_FILE_MAX_MB).toBe(20)
+  it('server default is the shared constant: 1 MB, decks are text (images are links)', () => {
+    expect(DECK_MAX_MB).toBe(1)
     expect(config.maxDeckBytes).toBe(DECK_MAX_MB * MB)
   })
-
-  it('measures UTF-8 bytes', () => {
-    expect(byteLength('abc')).toBe(3)
-    expect(byteLength('é')).toBe(2)
-  })
-
-  it('levels: ok below 12 MB, warn from 12 MB, blocked from 15 MB', () => {
-    expect(sizeLevel(0)).toBe('ok')
-    expect(sizeLevel(12 * MB - 1)).toBe('ok')
-    expect(sizeLevel(12 * MB)).toBe('warn')
-    expect(sizeLevel(15 * MB - 1)).toBe('warn')
-    expect(sizeLevel(15 * MB)).toBe('blocked')
-  })
-
-  it('formats MB with one decimal', () => {
-    expect(formatMb(4.2 * MB)).toBe('4.2 MB')
-    expect(formatMb(0)).toBe('0.0 MB')
-    expect(formatMb(300)).toBe('0.1 MB')
-  })
 })
 
-describe('image file gate', () => {
-  const file = (name: string, size: number, type = 'image/jpeg') => ({ name, size, type })
-
-  it('accepts images up to 20 MB', () => {
-    expect(IMAGE_FILE_MAX_BYTES).toBe(20 * MB)
-    expect(checkImageFile(file('a.jpg', 20 * MB))).toBeNull()
+describe('images are links: drops and pastes', () => {
+  const transfer = (data: Record<string, string>, files: File[] = []) => ({
+    getData: (t: string) => data[t] ?? '',
+    files,
+    items: files.map(() => ({ kind: 'file' as const })),
   })
+  const png = new File([new Uint8Array(4)], 'cat.png', { type: 'image/png' })
 
-  it('refuses images over 20 MB by name', () => {
-    expect(checkImageFile(file('huge.jpg', 20 * MB + 1))).toBe('huge.jpg is over 20 MB')
-    expect(checkImageSize({ name: 'z.png', size: 21 * MB })).toBe('z.png is over 20 MB')
-  })
-
-  it('refuses non-images', () => {
-    expect(checkImageFile(file('a.svg', 10, 'image/svg+xml'))).toBe(IMAGE_TYPE_MESSAGE)
-  })
-
-  it('acceptImages keeps the good files and reports each refusal', () => {
+  it('a dropped image file gives the links-only toast, never a silent no-op', () => {
     const notify = vi.fn()
-    const ok = acceptImages(
-      [
-        file('a.jpg', 10),
-        file('big.png', 25 * MB, 'image/png'),
-        file('b.txt', 1, 'text/plain'),
-        file('c.svg', 1, 'image/svg+xml'),
-      ],
-      notify,
-    )
-    expect(ok.map((f) => f.name)).toEqual(['a.jpg'])
-    expect(notify.mock.calls.map((c) => c[0])).toEqual([
-      'big.png is over 20 MB',
-      IMAGE_TYPE_MESSAGE,
-    ])
+    expect(imageFromTransfer(transfer({}, [png]), notify)).toBeNull()
+    expect(notify).toHaveBeenCalledWith(LINKS_ONLY_MESSAGE)
+    expect(hasFiles(transfer({}, [png]))).toBe(true)
   })
 
-  it('Markdown / zip import skips oversized images before compressing them', async () => {
-    const big = new File([new Uint8Array(20 * MB + 1)], 'photo.jpg', { type: 'image/jpeg' })
-    const md = new File(['# Hi'], 'deck.md', { type: 'text/markdown' })
-    const res = await readImportFiles([md, big])
-    expect(res.markdown?.name).toBe('deck.md')
-    expect(res.assets).toEqual({})
-    expect(res.skipped).toEqual(['photo.jpg'])
-    expect(res.tooLarge).toEqual(['photo.jpg is over 20 MB'])
+  it('a dragged web image gives its link (and no toast)', () => {
+    const notify = vi.fn()
+    const dt = transfer({ 'text/uri-list': '# comment\nhttps://upload.wikimedia.org/a.jpg' }, [png])
+    expect(imageFromTransfer(dt, notify)).toBe('https://upload.wikimedia.org/a.jpg')
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  it('plain text that is not a link is ignored quietly', () => {
+    const notify = vi.fn()
+    expect(transferredUrl(transfer({ 'text/plain': 'hello' }))).toBeNull()
+    expect(imageFromTransfer(transfer({ 'text/plain': 'hello' }), notify)).toBeNull()
+    expect(notify).not.toHaveBeenCalled()
   })
 })
+
+describe('Markdown / zip import', () => {
+  it('takes the .md and reports image files without embedding them', async () => {
+    const md = new File(['# Hi'], 'deck.md', { type: 'text/markdown' })
+    const res = await readImportFiles([md, png(), new File(['x'], 'notes.pdf')])
+    expect(res.markdown?.name).toBe('deck.md')
+    expect(res.images).toEqual(['photo.jpg'])
+    expect(res.skipped).toEqual(['notes.pdf'])
+  })
+})
+
+const png = () => new File([new Uint8Array(8)], 'photo.jpg', { type: 'image/jpeg' })

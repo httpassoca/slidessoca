@@ -42,7 +42,8 @@
     onedit: (id: string | null) => void
     ontext: (id: string, text: string) => void
     onkey: (e: KeyboardEvent) => void
-    onfiles: (files: File[]) => void
+    /** Something was dropped on the slide (an image link, or files to refuse). */
+    ondropdata: (data: DataTransfer) => void
   }
 
   let {
@@ -57,7 +58,7 @@
     onedit,
     ontext,
     onkey,
-    onfiles,
+    ondropdata,
   }: Props = $props()
 
   let wrap = $state<HTMLDivElement>()
@@ -197,8 +198,7 @@
   function onDrop(ev: DragEvent) {
     ev.preventDefault()
     dropping = false
-    const files = [...(ev.dataTransfer?.files ?? [])]
-    if (files.length) onfiles(files)
+    if (ev.dataTransfer) ondropdata(ev.dataTransfer)
   }
 
   const pct = (v: number, of: number) => `${(v / of) * 100}%`
@@ -218,7 +218,8 @@
       onselect(null)
   }}
   ondragover={(ev) => {
-    if (ev.dataTransfer?.types.includes('Files')) {
+    const types = ev.dataTransfer?.types ?? []
+    if (types.includes('Files') || types.includes('text/uri-list')) {
       ev.preventDefault()
       dropping = true
     }
@@ -255,7 +256,7 @@
       {/each}
     </div>
   {/if}
-  {#if dropping}<div class="drop" aria-hidden="true">Drop image to insert</div>{/if}
+  {#if dropping}<div class="drop" aria-hidden="true">Drop an image link to insert</div>{/if}
 </div>
 
 {#snippet overlay(e: SlideElement)}

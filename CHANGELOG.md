@@ -4,6 +4,24 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-28
+
+- Example decks (SL-0012): four ready-made decks (Stalker, the first computer bug, why democracy
+  fails, miracles you can witness), each 10–12 slides with speaker notes, its own theme and
+  credited Wikimedia Commons image links. Shown as real slide thumbnails on the home page and in
+  a new Examples tab on `/new`; `/examples/<slug>` plays or lists the deck, **Present** opens the
+  presenter on it and **Make a copy** saves it as a local deck. Fixed: opening
+  `/new?tab=markdown&example` directly now preloads the Markdown example.
+- Images are links (SL-0011, ADR 0002): every image input is an "Image URL" field with a preview
+  and alt text (editor, Inspector, quick create); dropped or pasted image files get a short
+  "images are links" toast. Markdown import keeps `![alt](https://…)` and warns per local image
+  (also images in a zip) instead of embedding it. The server rejects decks with uploaded
+  (`data:`) images with a 400 naming the slide; legacy local decks still open, and the Share
+  dialog lists their slides with uploaded images and blocks publishing. `DECK_MAX_MB` is now 1 and
+  the size meter is gone. Images load with `referrerpolicy="no-referrer"`; JPG/PDF/HTML downloads
+  inline images via CORS and say how many could not be included. Client-side compression and the
+  20 MB file gate are removed.
+
 ## [0.2.0] - 2026-11-28
 
 - Light and light-preset decks use their own accent and derived colours inside the dark app (dssoca's semantic tokens are re-declared on every deck root).

@@ -37,19 +37,21 @@ describe('deckToBundle', () => {
     expect(md).toContain('![r](https://e.com/r.png)')
   })
 
-  it('round-trips through parseMarkdown with the files as assets', () => {
+  it('re-imports with links kept and every embedded image reported (images are links)', () => {
     const d = deck()
-    const [md, ...imgs] = deckToBundle(d)
-    const assets = Object.fromEntries(
-      imgs.map((f) => [f.name, f.name.endsWith('png') ? png : webp]),
-    )
-    const p = parseMarkdown(new TextDecoder().decode(md.data), assets)
-    expect(p.missing).toEqual([])
+    const [md] = deckToBundle(d)
+    const p = parseMarkdown(new TextDecoder().decode(md.data))
+    expect(p.missing).toEqual([
+      'images/slide-2-1.png',
+      'images/slide-2-2.webp',
+      'images/slide-2-1.png',
+    ])
+    expect(p.warnings[0]).toMatch(/^Slide 2: .*full https link/)
     expect(p.title).toBe('My: talk')
     expect(p.theme).toBe('light')
+    expect(p.slides[3].content.images).toEqual([{ src: 'https://e.com/r.png', alt: 'r' }])
     const again = parsedToDeck(p)
-    expect(again.slides.map((s) => s.content)).toEqual(d.slides.map((s) => s.content))
-    expect(again.slides.map((s) => s.layout)).toEqual(d.slides.map((s) => s.layout))
+    expect(again.slides.map((s) => s.content.title)).toEqual(d.slides.map((s) => s.content.title))
   })
 })
 
@@ -63,6 +65,11 @@ describe('JSON import', () => {
     expect(back.share).toBeUndefined()
     expect(back.slides).toHaveLength(4)
     expect(back.title).toBe('My: talk')
+  })
+
+  it('keeps legacy embedded images (a backup from before images were links)', () => {
+    const back = importDeckJson(deckToJson(deck()))
+    expect(back.slides[1].content.images[0].src).toBe(png)
   })
 
   it('rejects junk', () => {

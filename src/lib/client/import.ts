@@ -1,27 +1,23 @@
-// Files picked or dropped on /new → what the Markdown / JSON importers need. Browser-only
-// (compressImage needs a canvas). A .zip is opened and treated as the files inside it.
+// Files picked or dropped on /new → the Markdown document the importer needs. A .zip is opened
+// and treated as the files inside it. Images are links (ADR 0002): image files (loose or inside
+// the zip) are not embedded, they are only reported so the page can say "use https links".
 
-import { MIME_BY_EXT } from '../deck/bundle.js'
 import { unzip } from '../deck/zip.js'
-import { checkImageSize, compressImage } from './images.js'
 
 export interface ImportedFiles {
   /** The Markdown document found (the first .md / .markdown / .txt). */
   markdown: { name: string; text: string } | null
-  /** Image file name (as written in the zip / picked) → compressed data URL. */
-  assets: Record<string, string>
-  /** Names we could not use (wrong type, unreadable image, too large). */
+  /** Image files that came along: not used, images in a deck are links. */
+  images: string[]
+  /** Other names we could not use (a second .md, unknown types). */
   skipped: string[]
-  /** One message per image refused for its size ("<name> is over 20 MB"), never compressed. */
-  tooLarge: string[]
 }
 
 const ext = (name: string) => /\.([a-z0-9]+)$/i.exec(name)?.[1].toLowerCase() ?? ''
 export const isMarkdownName = (name: string) => /^(md|markdown|txt)$/.test(ext(name))
-const imageMime = (f: { name: string; type?: string }) =>
-  f.type && /^image\/(png|jpe?g|webp|gif|avif)$/i.test(f.type) ? f.type : MIME_BY_EXT[ext(f.name)]
+const isImageName = (name: string) => /^(png|jpe?g|webp|gif|avif|svg|heic|bmp)$/.test(ext(name))
 
-/** Expand zips into plain File objects (directories flattened only in the asset lookup). */
+/** Expand zips into plain File objects. */
 async function expand(files: File[]): Promise<File[]> {
   const out: File[] = []
   for (const f of files) {
@@ -32,41 +28,20 @@ async function expand(files: File[]): Promise<File[]> {
     const entries = await unzip(new Uint8Array(await f.arrayBuffer()))
     for (const e of entries) {
       if (/(^|\/)(__MACOSX|\.)/.test(e.name)) continue
-      out.push(
-        new File([e.data as BlobPart], e.name, {
-          type: imageMime({ name: e.name }) ?? 'text/plain',
-        }),
-      )
+      out.push(new File([e.data as BlobPart], e.name))
     }
   }
   return out
 }
 
 export async function readImportFiles(files: File[]): Promise<ImportedFiles> {
-  const res: ImportedFiles = { markdown: null, assets: {}, skipped: [], tooLarge: [] }
+  const res: ImportedFiles = { markdown: null, images: [], skipped: [] }
   for (const f of await expand(files)) {
     if (isMarkdownName(f.name)) {
       if (!res.markdown) res.markdown = { name: f.name, text: await f.text() }
       else res.skipped.push(f.name)
-      continue
-    }
-    const mime = imageMime(f)
-    if (!mime) {
-      res.skipped.push(f.name)
-      continue
-    }
-    const tooLarge = checkImageSize(f)
-    if (tooLarge) {
-      res.tooLarge.push(tooLarge)
-      res.skipped.push(f.name)
-      continue
-    }
-    try {
-      const blob = f.type === mime ? f : new Blob([f], { type: mime })
-      res.assets[f.name] = await compressImage(blob)
-    } catch {
-      res.skipped.push(f.name)
-    }
+    } else if (isImageName(f.name) || f.type.startsWith('image/')) res.images.push(f.name)
+    else res.skipped.push(f.name)
   }
   return res
 }

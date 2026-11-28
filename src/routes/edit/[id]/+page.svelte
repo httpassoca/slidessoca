@@ -7,8 +7,9 @@
   import { counter } from '$lib/deck/count'
   import { beforeNavigate } from '$app/navigation'
   import { page } from '$app/state'
-  import { Button, EmptyState, Icon, Menu, Spinner, toast } from 'dssoca'
+  import { Button, EmptyState, Icon, Menu, Modal, Spinner, toast } from 'dssoca'
   import { onDestroy, onMount } from 'svelte'
+  import ImageUrlField from '$lib/components/ImageUrlField.svelte'
   import ShareDialog from '$lib/components/ShareDialog.svelte'
   import EditorCanvas from '$lib/components/editor/EditorCanvas.svelte'
   import EditorTopBar from '$lib/components/editor/EditorTopBar.svelte'
@@ -18,7 +19,8 @@
   import { getDeck, putDeck } from '$lib/client/db'
   import { exportJson, exportMarkdown } from '$lib/client/export'
   import { downloadDeck } from '$lib/client/downloads'
-  import { acceptImages, checkImageFile, compressImage } from '$lib/client/images'
+  import { hasFiles, imageFromTransfer, naturalSize } from '$lib/client/images'
+  import { altFromUrl, LINKS_ONLY_MESSAGE } from '$lib/deck/images'
   import {
     blankSlide,
     commit,
@@ -37,9 +39,7 @@
     redo,
     seal,
     setBox,
-    setContent,
     undo,
-    updateElement,
     updateSlide,
     updateText,
     type Box,
@@ -59,7 +59,7 @@
   let shareOpen = $state(false)
   let sheetOpen = $state(false)
   let saved = $state(true)
-  let imageInput = $state<HTMLInputElement>()
+  let imageOpen = $state(false)
 
   const deck = $derived(h?.present)
   const idx = $derived(deck ? Math.min(current, deck.slides.length - 1) : 0)
@@ -194,47 +194,24 @@
     selectedId = el.id
   }
 
-  function naturalSize(src: string): Promise<{ w: number; h: number } | undefined> {
-    return new Promise((resolve) => {
-      const im = new Image()
-      im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight })
-      im.onerror = () => resolve(undefined)
-      im.src = src
-    })
+  /** Images are links (ADR 0002): insert one by URL, sized from the picture when it loads. */
+  async function insertImage(src: string, alt: string) {
+    const size = await naturalSize(src)
+    insert((s) => newImage(s, src, alt, size))
   }
 
-  async function insertImages(files: File[]) {
-    for (const f of acceptImages(files)) {
-      try {
-        const src = await compressImage(f)
-        const size = await naturalSize(src)
-        const alt = f.name.replace(/\.[^.]+$/, '')
-        insert((s) => newImage(s, src, alt, size))
-      } catch {
-        toast.error(`Could not read ${f.name}`)
-      }
-    }
+  function ondropdata(data: DataTransfer) {
+    const src = imageFromTransfer(data)
+    if (src) insertImage(src, altFromUrl(src))
   }
 
-  async function replaceImage(id: string, f: File) {
-    const why = checkImageFile(f)
-    if (why) return toast.error(why)
-    const src = await compressImage(f)
-    onslide((s) => updateElement(s, id, { src }))
-  }
-
-  async function addContentImages(files: File[]) {
-    const ok = acceptImages(files)
-    if (!ok.length) return
-    const srcs = await Promise.all(ok.map((f) => compressImage(f)))
-    onslide((s) =>
-      setContent(s, {
-        images: [
-          ...s.content.images,
-          ...srcs.map((src, i) => ({ src, alt: ok[i].name.replace(/\.[^.]+$/, '') })),
-        ],
-      }),
-    )
+  /** Pasting an image file outside a text field: say that images are links. */
+  function onpaste(e: ClipboardEvent) {
+    const t = e.target as HTMLElement | null
+    if (t?.closest('input, textarea, [contenteditable]')) return
+    if (!hasFiles(e.clipboardData)) return
+    e.preventDefault()
+    toast.info(LINKS_ONLY_MESSAGE)
   }
 
   function onbox(id: string, box: Box, gesture: string) {
@@ -301,7 +278,7 @@
   }
 </script>
 
-<svelte:window onkeydown={globalKey} onpagehide={flush} />
+<svelte:window onkeydown={globalKey} onpagehide={flush} {onpaste} />
 <svelte:head><title>{deck ? `${deck.title} · slidessoca` : 'slidessoca'}</title></svelte:head>
 
 {#if missing}
@@ -351,7 +328,7 @@
       <main class="stage">
         <div class="toolbar" role="toolbar" aria-label="Insert">
           <Button size="sm" onclick={() => insert((s) => newTextBox(s))}>Text</Button>
-          <Button size="sm" onclick={() => imageInput?.click()}>Image</Button>
+          <Button size="sm" onclick={() => (imageOpen = true)}>Image</Button>
           <Menu
             size="sm"
             label="Insert shape"
@@ -371,17 +348,6 @@
           >
             Shape
           </Menu>
-          <input
-            bind:this={imageInput}
-            type="file"
-            multiple
-            accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
-            hidden
-            onchange={(e) => {
-              insertImages([...(e.currentTarget.files ?? [])])
-              e.currentTarget.value = ''
-            }}
-          />
           <span class="spacer"></span>
           {#if selected}
             <Button
@@ -429,7 +395,7 @@
               {onedit}
               {ontext}
               onkey={canvasKey}
-              onfiles={insertImages}
+              {ondropdata}
             />
           </div>
         </div>
@@ -440,17 +406,23 @@
           <strong>Properties</strong>
           <Button size="sm" variant="ghost" onclick={() => (sheetOpen = false)}>Close</Button>
         </div>
-        <Inspector
-          {slide}
-          element={selected}
-          theme={deck.theme}
-          {onslide}
-          onreplaceimage={replaceImage}
-          onaddimages={addContentImages}
-        />
+        <Inspector {slide} element={selected} theme={deck.theme} {onslide} />
       </aside>
     </div>
   </div>
+
+  <Modal bind:open={imageOpen} title="Insert image">
+    {#if imageOpen}
+      <ImageUrlField
+        size="md"
+        submitLabel="Insert"
+        onadd={({ src, alt }) => {
+          imageOpen = false
+          insertImage(src, alt)
+        }}
+      />
+    {/if}
+  </Modal>
 
   <ShareDialog bind:open={shareOpen} deck={fullDeck} onchange={onShareChange} />
 {/if}

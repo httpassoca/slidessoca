@@ -138,7 +138,7 @@ describe('ShareDialog', () => {
     fetchMock.mockResolvedValueOnce(json(413, { message: 'Deck is too large.' }))
     const onchange = mount(makeDeck('Huge'))
     await fireEvent.click(screen.getByRole('button', { name: 'Publish' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(/15 MB/)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/1 MB max/)
     expect(onchange).not.toHaveBeenCalled()
     expect(toasts.items.some((t) => t.kind === 'error')).toBe(true)
   })
@@ -208,32 +208,52 @@ describe('ShareDialog publish rules', () => {
     expect(sentBody().deck.slides[0].notes).toBe('my private note')
   })
 
-  it('shows the upload size against the limit', () => {
+  it('has no size meter any more (decks are text, images are links)', () => {
     mount(noted())
-    const meter = screen.getByRole('meter', { name: 'Upload size' })
-    expect(meter).toHaveAttribute('aria-valuetext', '0.1 MB of 15 MB')
-    expect(screen.queryByText(/Large deck/)).not.toBeInTheDocument()
-  })
-
-  // The body sits in `content` only (no derived elements), so it is counted once.
-  const heavy = (mb: number) => {
-    const s = makeSlide({ title: 'A', body: 'x'.repeat(mb * 1024 * 1024) })
-    return makeDeck('Heavy', 'dark', [{ ...s, elements: [] }])
-  }
-
-  it('warns from 12 MB but still publishes', () => {
-    mount(heavy(12.5))
-    expect(screen.getByRole('meter')).toHaveAttribute('aria-valuetext', '12.5 MB of 15 MB')
-    expect(screen.getByText(/Large deck: viewers on mobile data will wait/)).toBeInTheDocument()
+    expect(screen.queryByRole('meter')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Publish' })).not.toBeDisabled()
   })
 
-  it('blocks publishing and republishing at 15 MB', () => {
-    mount(heavy(15))
-    expect(screen.getByRole('alert')).toHaveTextContent(/Remove some images or replace them/)
+  const legacy = (over: Partial<Deck> = {}): Deck => {
+    const old = { src: 'data:image/png;base64,AA==', alt: 'old' }
+    const placed = makeSlide({ title: 'Placed' })
+    return {
+      ...makeDeck('Old', 'light', [
+        makeSlide({ title: 'Fine', images: [{ src: 'https://e.org/a.png', alt: 'a' }] }),
+        makeSlide({ title: 'Upload', images: [old] }),
+        // A hand-placed image element (not in content) counts too.
+        {
+          ...placed,
+          manual: true,
+          elements: [
+            ...placed.elements,
+            {
+              id: 'i1',
+              kind: 'image',
+              src: old.src,
+              alt: '',
+              fit: 'cover',
+              x: 0,
+              y: 0,
+              w: 9,
+              h: 9,
+            },
+          ],
+        },
+      ]),
+      ...over,
+    }
+  }
+
+  it('blocks publishing a legacy deck with uploaded images and lists those slides', async () => {
+    mount(legacy())
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent(/Uploaded images can't be published/)
+    expect(alert).toHaveTextContent(/on slides 2 and 3, replace each uploaded image with an https/)
     expect(screen.getByRole('button', { name: 'Publish' })).toBeDisabled()
+    expect(fetchMock).not.toHaveBeenCalled()
     cleanup()
-    mount({ ...heavy(15), share: info() })
+    mount(legacy({ share: info() }))
     expect(screen.getByRole('button', { name: 'Republish' })).toBeDisabled()
   })
 })

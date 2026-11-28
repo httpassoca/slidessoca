@@ -8,6 +8,12 @@
 // already loaded for it, plus dssoca's theme. Rasterising draws that markup in an SVG
 // <foreignObject> onto a canvas; fonts and images are inlined as data: URLs first because an
 // SVG image cannot load anything itself.
+//
+// Images are links (ADR 0002). Each one is fetched with CORS just for the export; a host that
+// does not allow it can't go into a JPG/PDF (it would taint the canvas), so that slide gets the
+// missing-image frame and the export ends with a toast saying how many were left out. The HTML
+// download keeps such an image as its link (it shows when the file is opened online). No server
+// proxy, on purpose (SSRF, bandwidth).
 import { flushSync, mount, unmount } from 'svelte'
 import { toast, toasts } from 'dssoca'
 import themeCssRaw from 'dssoca/theme.css?raw'
@@ -89,9 +95,13 @@ export function embeddedFontCss(): Promise<string | null> {
 }
 
 /** http(s) image → data: URL, or null when it can't be fetched (CORS, offline, 404). */
-async function inlineImage(src: string): Promise<string | null> {
+export async function inlineImage(src: string): Promise<string | null> {
   try {
-    const res = await fetch(src, { mode: 'cors' })
+    const res = await fetch(src, {
+      mode: 'cors',
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+    })
     if (!res.ok) return null
     const blob = await res.blob()
     if (!blob.type.startsWith('image/') || blob.type.includes('svg')) return null
@@ -104,15 +114,26 @@ async function inlineImage(src: string): Promise<string | null> {
 /** A raster src that is guaranteed to fail, so SlideView draws its quiet "missing" frame. */
 const BROKEN = 'data:image/png;base64,AA=='
 
-/** Deck copy whose http images are data: URLs (or `fallback(src)` when that fails). */
-async function withInlineImages(deck: Deck, fallback: (src: string) => string): Promise<Deck> {
+/**
+ * Deck copy whose http images are data: URLs (or `fallback(src)` when that fails), and how many
+ * distinct images could not be inlined.
+ */
+export async function withInlineImages(
+  deck: Deck,
+  fallback: (src: string) => string,
+): Promise<{ deck: Deck; failed: number }> {
   const cache = new Map<string, Promise<string>>()
+  let failed = 0
   const resolve = (src: string) => {
     if (!/^https?:/i.test(src)) return Promise.resolve(src)
     if (!cache.has(src))
       cache.set(
         src,
-        inlineImage(src).then((d) => d ?? fallback(src)),
+        inlineImage(src).then((d) => {
+          if (d) return d
+          failed++
+          return fallback(src)
+        }),
       )
     return cache.get(src)!
   }
@@ -124,7 +145,16 @@ async function withInlineImages(deck: Deck, fallback: (src: string) => string): 
       ),
     })),
   )
-  return { ...deck, slides }
+  return { deck: { ...deck, slides }, failed }
+}
+
+/** The toast after an export that had to leave images out (or keep them as links). */
+export function missingImagesMessage(failed: number, kind: 'raster' | 'html'): string | null {
+  if (failed <= 0) return null
+  const n = failed === 1 ? '1 image' : `${failed} images`
+  return kind === 'html'
+    ? `${n} stayed as links: the site does not allow copying, so they show only when online`
+    : `${n} could not be included: the site does not allow copying, so a placeholder is drawn`
 }
 
 interface Mounted {
@@ -206,8 +236,13 @@ async function mountSlides(deck: Deck, width: number): Promise<Mounted> {
 }
 
 /** The deck as one self-contained HTML document. */
-export async function deckHtml(deck: Deck, opts: { notes?: boolean } = {}): Promise<string> {
-  const ready = await withInlineImages(deck, (src) => src) // keep http as is when it can't load
+export async function deckHtml(
+  deck: Deck,
+  opts: { notes?: boolean; onMissing?: (failed: number) => void } = {},
+): Promise<string> {
+  // Keep the link when it can't be inlined: it still works when the file is opened online.
+  const { deck: ready, failed } = await withInlineImages(deck, (src) => src)
+  opts.onMissing?.(failed)
   const [fonts, m] = await Promise.all([embeddedFontCss(), mountSlides(ready, 1600)])
   try {
     const t = themeEntry(deck.theme)
@@ -232,8 +267,10 @@ export async function deckHtml(deck: Deck, opts: { notes?: boolean } = {}): Prom
 export async function rasteriseDeck(
   deck: Deck,
   onProgress?: (done: number, total: number) => void,
+  onMissing?: (failed: number) => void,
 ): Promise<Uint8Array[]> {
-  const ready = await withInlineImages(deck, () => BROKEN)
+  const { deck: ready, failed } = await withInlineImages(deck, () => BROKEN)
+  onMissing?.(failed)
   const [fonts, m] = await Promise.all([embeddedFontCss(), mountSlides(ready, RASTER_W)])
   try {
     const t = themeEntry(deck.theme)
@@ -291,14 +328,23 @@ export async function downloadDeck(deck: Deck, kind: DeckDownload): Promise<void
     return
   }
   const id = toast.loading(kind.startsWith('html') ? 'Preparing HTML…' : 'Rendering slides…')
+  let missing = null as string | null
   try {
     if (kind === 'html' || kind === 'html-notes') {
-      const html = await deckHtml(deck, { notes: kind === 'html-notes' })
+      const html = await deckHtml(deck, {
+        notes: kind === 'html-notes',
+        onMissing: (n) => (missing = missingImagesMessage(n, 'html')),
+      })
       download(downloadName(deck.title, 'html'), new Blob([html], { type: 'text/html' }))
     } else {
-      const jpgs = await rasteriseDeck(deck, (done) => {
-        if (done < total) toasts.update(id, { message: `Rendering slide ${done + 1} of ${total}…` })
-      })
+      const jpgs = await rasteriseDeck(
+        deck,
+        (done) => {
+          if (done < total)
+            toasts.update(id, { message: `Rendering slide ${done + 1} of ${total}…` })
+        },
+        (n) => (missing = missingImagesMessage(n, 'raster')),
+      )
       if (kind === 'jpg') {
         const zip = zipStore(jpgs.map((data, i) => ({ name: slideImageName(i, total), data })))
         download(
@@ -319,6 +365,7 @@ export async function downloadDeck(deck: Deck, kind: DeckDownload): Promise<void
       }
     }
     toasts.update(id, { kind: 'success', message: 'Download ready', timeout: 3000 })
+    if (missing) toast.info(missing)
   } catch (e) {
     toasts.update(id, {
       kind: 'error',
