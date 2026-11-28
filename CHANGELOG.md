@@ -4,6 +4,11 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Deck downloads (SL-0007): one self-contained `.html` with a tiny offline player (speaker notes
+  with N when downloaded by the owner), a `.zip` of 1920×1080 JPGs and a 16:9 PDF, all drawn in
+  the browser from SlideView. In the editor's More menu, the deck list's card menu and the shared
+  viewer's bar.
+
 ## [0.1.0] - 2026-11-27
 
 - Unslop pass (SL-0006): zero-padded slide counter everywhere, calmer home with real sample slides in the empty state, deck actions in a menu, broken images draw a quiet frame, no hairlines around the viewer stage, toast copy without trailing periods.
