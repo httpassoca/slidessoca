@@ -4,6 +4,12 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Example decks (SL-0012): four ready-made decks (Stalker, the first computer bug, why democracy
+  fails, miracles you can witness), each 10–12 slides with speaker notes, its own theme and
+  credited Wikimedia Commons image links. Shown as real slide thumbnails on the home page and in
+  a new Examples tab on `/new`; `/examples/<slug>` plays or lists the deck, **Present** opens the
+  presenter on it and **Make a copy** saves it as a local deck. Fixed: opening
+  `/new?tab=markdown&example` directly now preloads the Markdown example.
 - Images are links (SL-0011, ADR 0002): every image input is an "Image URL" field with a preview
   and alt text (editor, Inspector, quick create); dropped or pasted image files get a short
   "images are links" toast. Markdown import keeps `![alt](https://…)` and warns per local image
