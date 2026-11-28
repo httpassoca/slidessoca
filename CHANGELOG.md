@@ -4,6 +4,8 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-28
+
 - Example decks (SL-0012): four ready-made decks (Stalker, the first computer bug, why democracy
   fails, miracles you can witness), each 10–12 slides with speaker notes, its own theme and
   credited Wikimedia Commons image links. Shown as real slide thumbnails on the home page and in
