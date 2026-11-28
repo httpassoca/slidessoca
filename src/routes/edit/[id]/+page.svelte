@@ -18,7 +18,7 @@
   import { getDeck, putDeck } from '$lib/client/db'
   import { exportJson, exportMarkdown } from '$lib/client/export'
   import { downloadDeck } from '$lib/client/downloads'
-  import { compressImage, isImageFile } from '$lib/client/images'
+  import { acceptImages, checkImageFile, compressImage } from '$lib/client/images'
   import {
     blankSlide,
     commit,
@@ -50,6 +50,8 @@
 
   let h = $state.raw<History<Deck> | null>(null)
   let share = $state.raw<ShareInfo | undefined>(undefined)
+  /** Share dialog's "Include speaker notes", kept beside `share` (not part of undo history). */
+  let publishNotes = $state(false)
   let missing = $state(false)
   let current = $state(0)
   let selectedId = $state<string | null>(null)
@@ -63,7 +65,7 @@
   const idx = $derived(deck ? Math.min(current, deck.slides.length - 1) : 0)
   const slide = $derived(deck?.slides[idx])
   const selected = $derived(slide ? getElement(slide, selectedId) : undefined)
-  const fullDeck = $derived(deck ? { ...deck, share } : undefined)
+  const fullDeck = $derived(deck ? { ...deck, share, publishNotes } : undefined)
 
   onMount(async () => {
     const d = await getDeck(page.params.id!)
@@ -71,26 +73,37 @@
       missing = true
       return
     }
-    const { share: s, ...rest } = d
+    const { share: s, publishNotes: n, ...rest } = d
     share = s
+    publishNotes = n === true
     h = history(rest as Deck)
-    lastSaved = { deck: h.present, share }
+    lastSaved = { deck: h.present, share, publishNotes }
     const start = Number(page.url.searchParams.get('slide'))
     if (Number.isInteger(start) && start > 0) current = Math.min(start, d.slides.length - 1)
   })
 
   // ---------------------------------------------------------------- autosave
-  let lastSaved: { deck: Deck; share: ShareInfo | undefined } | null = null
+  let lastSaved: { deck: Deck; share: ShareInfo | undefined; publishNotes: boolean } | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
 
   function flush() {
     clearTimeout(timer)
     timer = undefined
     if (!h || !lastSaved) return
-    if (lastSaved.deck === h.present && lastSaved.share === share) return
-    const snapshot = { deck: h.present, share }
+    if (
+      lastSaved.deck === h.present &&
+      lastSaved.share === share &&
+      lastSaved.publishNotes === publishNotes
+    )
+      return
+    const snapshot = { deck: h.present, share, publishNotes }
     lastSaved = snapshot
-    const d: Deck = { ...snapshot.deck, share: snapshot.share, updatedAt: new Date().toISOString() }
+    const d: Deck = {
+      ...snapshot.deck,
+      share: snapshot.share,
+      publishNotes: snapshot.publishNotes,
+      updatedAt: new Date().toISOString(),
+    }
     putDeck(d).then(
       () => {
         if (lastSaved === snapshot) saved = true
@@ -102,7 +115,13 @@
   $effect(() => {
     const d = h?.present
     const s = share
-    if (!d || !lastSaved || (lastSaved.deck === d && lastSaved.share === s)) return
+    const n = publishNotes
+    if (
+      !d ||
+      !lastSaved ||
+      (lastSaved.deck === d && lastSaved.share === s && lastSaved.publishNotes === n)
+    )
+      return
     saved = false
     clearTimeout(timer)
     timer = setTimeout(flush, 400)
@@ -185,9 +204,7 @@
   }
 
   async function insertImages(files: File[]) {
-    const ok = files.filter(isImageFile)
-    if (ok.length < files.length) toast.error('Only PNG, JPEG, WebP, GIF or AVIF images')
-    for (const f of ok) {
+    for (const f of acceptImages(files)) {
       try {
         const src = await compressImage(f)
         const size = await naturalSize(src)
@@ -200,13 +217,15 @@
   }
 
   async function replaceImage(id: string, f: File) {
-    if (!isImageFile(f)) return toast.error('Only PNG, JPEG, WebP, GIF or AVIF images')
+    const why = checkImageFile(f)
+    if (why) return toast.error(why)
     const src = await compressImage(f)
     onslide((s) => updateElement(s, id, { src }))
   }
 
   async function addContentImages(files: File[]) {
-    const ok = files.filter(isImageFile)
+    const ok = acceptImages(files)
+    if (!ok.length) return
     const srcs = await Promise.all(ok.map((f) => compressImage(f)))
     onslide((s) =>
       setContent(s, {
@@ -274,8 +293,9 @@
 
   function onShareChange(d: Deck) {
     share = d.share
+    publishNotes = d.publishNotes === true
     if (deck && (d.title !== deck.title || d.theme !== deck.theme || d.slides !== deck.slides)) {
-      const { share: _s, ...rest } = d
+      const { share: _s, publishNotes: _n, ...rest } = d
       apply(rest as Deck)
     }
   }

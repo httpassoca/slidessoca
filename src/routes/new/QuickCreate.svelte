@@ -5,7 +5,7 @@
   import SlideGrid from '$lib/components/SlideGrid.svelte'
   import ThemePicker from '$lib/components/ThemePicker.svelte'
   import { putDeck } from '$lib/client/db'
-  import { compressImage, isImageFile } from '$lib/client/images'
+  import { acceptImages, compressImage } from '$lib/client/images'
   import { blocksToSlides, quickDeck, splitQuickText } from '$lib/deck/quick'
   import { QUICK_EXAMPLE } from '$lib/format-doc'
   import { blankBlock, quick as d, type DraftBlock } from './draft.svelte'
@@ -37,8 +37,11 @@
   }
 
   async function addImages(b: DraftBlock, files: File[]) {
-    const imgs = files.filter(isImageFile)
-    if (!imgs.length) return
+    const imgs = acceptImages(files)
+    if (!imgs.length) {
+      picked[b.key] = []
+      return
+    }
     busy[b.key] = true
     try {
       for (const f of imgs) {
@@ -182,7 +185,7 @@
         autosize
         maxRows={30}
         placeholder={QUICK_EXAMPLE}
-        hint="An empty line starts a new slide; the first line of each slide is its title (unless it starts with >, - or an image). Need several paragraphs on one slide? Separate slides with a line containing only --- instead."
+        hint="A line with only --- starts a new slide; the first line of each slide is its title (unless it starts with >, - or an image)"
       />
       <div class="row">
         {#if !d.text.trim()}

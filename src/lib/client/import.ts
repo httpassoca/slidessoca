@@ -3,15 +3,17 @@
 
 import { MIME_BY_EXT } from '../deck/bundle.js'
 import { unzip } from '../deck/zip.js'
-import { compressImage } from './images.js'
+import { checkImageSize, compressImage } from './images.js'
 
 export interface ImportedFiles {
   /** The Markdown document found (the first .md / .markdown / .txt). */
   markdown: { name: string; text: string } | null
   /** Image file name (as written in the zip / picked) → compressed data URL. */
   assets: Record<string, string>
-  /** Names we could not use (wrong type, unreadable image). */
+  /** Names we could not use (wrong type, unreadable image, too large). */
   skipped: string[]
+  /** One message per image refused for its size ("<name> is over 20 MB"), never compressed. */
+  tooLarge: string[]
 }
 
 const ext = (name: string) => /\.([a-z0-9]+)$/i.exec(name)?.[1].toLowerCase() ?? ''
@@ -41,7 +43,7 @@ async function expand(files: File[]): Promise<File[]> {
 }
 
 export async function readImportFiles(files: File[]): Promise<ImportedFiles> {
-  const res: ImportedFiles = { markdown: null, assets: {}, skipped: [] }
+  const res: ImportedFiles = { markdown: null, assets: {}, skipped: [], tooLarge: [] }
   for (const f of await expand(files)) {
     if (isMarkdownName(f.name)) {
       if (!res.markdown) res.markdown = { name: f.name, text: await f.text() }
@@ -50,6 +52,12 @@ export async function readImportFiles(files: File[]): Promise<ImportedFiles> {
     }
     const mime = imageMime(f)
     if (!mime) {
+      res.skipped.push(f.name)
+      continue
+    }
+    const tooLarge = checkImageSize(f)
+    if (tooLarge) {
+      res.tooLarge.push(tooLarge)
       res.skipped.push(f.name)
       continue
     }

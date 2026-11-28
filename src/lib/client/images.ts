@@ -1,8 +1,34 @@
 // Every uploaded image is downscaled and re-encoded in the browser before it enters a deck:
 // that is what keeps published decks small (cheap storage, fast links on mobile data).
 
+import { toast } from 'dssoca'
+import { IMAGE_FILE_MAX_MB, MB } from '../deck/limits.js'
+
 export const MAX_IMAGE_EDGE = 1920
 export const IMAGE_QUALITY = 0.82
+/** An already-compressed image at most this big (and ≤ MAX_IMAGE_EDGE) keeps its bytes. */
+export const KEEP_ORIGINAL_BYTES = 500 * 1024
+
+/**
+ * Should an upload keep its original bytes instead of being re-encoded? Yes when it is already
+ * WebP or JPEG, fits in MAX_IMAGE_EDGE on both edges and is at most KEEP_ORIGINAL_BYTES — so a
+ * deck exported and imported again does not lose quality each round trip. Pure.
+ */
+export function shouldKeepOriginal(f: {
+  type: string
+  width: number
+  height: number
+  bytes: number
+}): boolean {
+  return (
+    /^image\/(webp|jpeg)$/i.test(f.type) &&
+    f.width > 0 &&
+    f.height > 0 &&
+    f.width <= MAX_IMAGE_EDGE &&
+    f.height <= MAX_IMAGE_EDGE &&
+    f.bytes <= KEEP_ORIGINAL_BYTES
+  )
+}
 
 function loadBitmap(file: Blob): Promise<ImageBitmap | HTMLImageElement> {
   if ('createImageBitmap' in window) return createImageBitmap(file)
@@ -14,12 +40,19 @@ function loadBitmap(file: Blob): Promise<ImageBitmap | HTMLImageElement> {
   })
 }
 
-/** File → compressed data URL (WebP, JPEG fallback). Animated GIFs pass through untouched. */
+/**
+ * File → compressed data URL (WebP, JPEG fallback). Animated GIFs pass through untouched, and so
+ * do small WebP / JPEG files that are already within limits (`shouldKeepOriginal`).
+ */
 export async function compressImage(file: Blob): Promise<string> {
   if (file.type === 'image/gif') return blobToDataUrl(file)
   const img = await loadBitmap(file)
   const w0 = 'naturalWidth' in img ? img.naturalWidth : img.width
   const h0 = 'naturalHeight' in img ? img.naturalHeight : img.height
+  if (shouldKeepOriginal({ type: file.type, width: w0, height: h0, bytes: file.size })) {
+    if ('close' in img) img.close()
+    return blobToDataUrl(file)
+  }
   const k = Math.min(1, MAX_IMAGE_EDGE / Math.max(w0, h0))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(w0 * k)
@@ -39,4 +72,44 @@ export function blobToDataUrl(b: Blob): Promise<string> {
   })
 }
 
-export const isImageFile = (f: File) => /^image\/(png|jpe?g|webp|gif|avif)$/i.test(f.type)
+export const isImageFile = (f: Pick<File, 'type'>) =>
+  /^image\/(png|jpe?g|webp|gif|avif)$/i.test(f.type)
+
+// ---------------------------------------------------------------- the gate before compressImage
+// Every place a picked / dropped / imported image enters a deck runs it through here first, so a
+// huge camera RAW-ish file is refused with a clear message instead of freezing the tab decoding.
+
+export const IMAGE_FILE_MAX_BYTES = IMAGE_FILE_MAX_MB * MB
+export const IMAGE_TYPE_MESSAGE = 'Only PNG, JPEG, WebP, GIF or AVIF images'
+
+type FileLike = Pick<File, 'name' | 'size' | 'type'>
+
+/** Size check only (for importers that work the type out from the file name). */
+export const checkImageSize = (f: Pick<File, 'name' | 'size'>): string | null =>
+  f.size > IMAGE_FILE_MAX_BYTES ? `${f.name} is over ${IMAGE_FILE_MAX_MB} MB` : null
+
+/** Why this file cannot go into a deck (wrong type, over 20 MB), or null when it can. */
+export function checkImageFile(f: FileLike): string | null {
+  if (!isImageFile(f)) return IMAGE_TYPE_MESSAGE
+  return checkImageSize(f)
+}
+
+/**
+ * The files that may be compressed; every refused one is reported through `notify` (a toast by
+ * default): one message for wrong types, one per file that is too large.
+ */
+export function acceptImages<F extends FileLike>(
+  files: F[],
+  notify: (msg: string) => void = (m) => toast.error(m),
+): F[] {
+  const ok: F[] = []
+  let wrongType = false
+  for (const f of files) {
+    const why = checkImageFile(f)
+    if (!why) ok.push(f)
+    else if (why === IMAGE_TYPE_MESSAGE) wrongType = true
+    else notify(why)
+  }
+  if (wrongType) notify(IMAGE_TYPE_MESSAGE)
+  return ok
+}
