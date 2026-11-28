@@ -4,6 +4,8 @@ All notable changes. Format: [Keep a Changelog](https://keepachangelog.com/), ve
 
 ## [Unreleased]
 
+- Quick create's one text box splits slides only on a line with just `---`, like the Markdown format, so slides can hold several paragraphs; small JPEG/WebP images (≤1920px, ≤500 KB) keep their original bytes instead of being re-encoded, so export → import no longer loses quality (SL-0009).
+
 ## [0.1.0] - 2026-11-27
 
 - Unslop pass (SL-0006): zero-padded slide counter everywhere, calmer home with real sample slides in the empty state, deck actions in a menu, broken images draw a quiet frame, no hairlines around the viewer stage, toast copy without trailing periods.
