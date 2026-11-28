@@ -22,6 +22,7 @@
   import { fullscreenState, toggleFullscreen } from '$lib/components/player/fullscreen.svelte'
   import { preloadSlides } from '$lib/components/player/preload'
   import { getDeck } from '$lib/client/db'
+  import { EXAMPLE_PREFIX, exampleDeckById } from '$lib/examples'
   import type { Deck } from '$lib/deck/types'
   import { renderMarkdown } from '$lib/deck/render'
   import { themeAttributes } from '$lib/themes'
@@ -64,7 +65,9 @@
 
   onMount(() => {
     let alive = true
-    getDeck(id)
+    // Example decks (SL-0012) are not in IndexedDB: `example:<slug>` presents the built-in copy.
+    const example = exampleDeckById(id)
+    ;(example ? Promise.resolve(example) : getDeck(id))
       .then((d) => {
         if (!alive) return
         if (!d) missing = true
@@ -248,7 +251,18 @@
             <Icon name={icon(fs.on ? 'shrink' : 'expand')} />
           </Button>
         {/if}
-        <Button size="sm" variant="ghost" onclick={() => goto(`/edit/${id}`)}>Exit</Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onclick={() =>
+            goto(
+              id.startsWith(EXAMPLE_PREFIX)
+                ? `/examples/${id.slice(EXAMPLE_PREFIX.length)}`
+                : `/edit/${id}`,
+            )}
+        >
+          Exit
+        </Button>
       </div>
     </header>
 

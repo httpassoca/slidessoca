@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation'
   import { Button, Icon, Menu, Modal, toast, type MenuItem } from 'dssoca'
   import { onMount } from 'svelte'
+  import ExampleList from '$lib/components/ExampleList.svelte'
   import SlideView from '$lib/components/SlideView.svelte'
   import { glyph } from '$lib/components/editor/icons'
   import {
@@ -205,6 +206,14 @@
       {/each}
     </ul>
   {/if}
+
+  {#if decks}
+    <section class="examples" aria-labelledby="examples-title">
+      <h2 id="examples-title">Examples</h2>
+      <p>Ready-made decks to read, present or copy and make your own</p>
+      <ExampleList />
+    </section>
+  {/if}
 </main>
 
 <Modal
@@ -315,6 +324,23 @@
       margin: 0 0 var(--ss-s-6);
       color: var(--ss-fg-muted);
       max-inline-size: 40ch;
+    }
+  }
+
+  .examples {
+    margin-block-start: var(--ss-s-10);
+    padding-block-start: var(--ss-s-6);
+    border-block-start: 1px solid var(--ss-line);
+    h2 {
+      margin: 0;
+      font-family: var(--ss-font-display);
+      font-size: var(--ss-size-h3);
+      font-weight: 400;
+    }
+    p {
+      margin: var(--ss-s-1) 0 var(--ss-s-4);
+      color: var(--ss-fg-muted);
+      font-size: var(--ss-size-sm);
     }
   }
 

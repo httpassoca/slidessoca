@@ -32,6 +32,12 @@ in the browser, on desktop or phone.
 - **Present** — presenter view with the next slide, speaker notes and a timer, plus an audience
   window that follows along. Keys: ←/→ Space PageUp/PageDown Home/End · F fullscreen ·
   O/Esc overview · N notes.
+- **Examples** — four ready-made decks with speaker notes on the home page and on `/new` →
+  Examples: Tarkovsky's _Stalker_ (Gruvbox), the first computer bug (Light), why democracy
+  fails (Nord) and miracles you can witness (Coffee). Open one at `/examples/<slug>` to play or
+  read it, **Present** it with notes, or **Make a copy** to edit it as your own deck. They are
+  Markdown files in `src/lib/examples/` (the same format), with Wikimedia Commons images
+  credited on each deck's last slide.
 - **Themes** — dssoca dark/light plus every passoca.dev theme (Dracula, Tokyo Night, Gruvbox,
   Nord, Solarized, Coffee).
 
